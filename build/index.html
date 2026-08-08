@@ -73,11 +73,19 @@ body[data-tab="panel-partner"] #commonFilter{display:none}
 .exp-menu.hide{display:none}
 .exp-opt{display:flex;align-items:center;gap:9px;padding:7px 13px;border-radius:6px;font-size:16px;color:#0C447C;cursor:pointer}
 .exp-opt:hover{background:#EBF3FB}
-.btn-refresh{cursor:pointer}
+.btn-query{cursor:pointer}
 @keyframes spin{to{transform:rotate(360deg)}}
 .spinning{display:inline-block;animation:spin .6s linear}
+.spin-loop{display:inline-block;animation:spin .9s linear infinite}
+.body{position:relative}
+.body.loading{pointer-events:none}
+.body.loading>*{opacity:.35}
+.body.loading::after{
+  content:'';position:absolute;top:50%;left:50%;width:38px;height:38px;margin:-19px 0 0 -19px;
+  border:4px solid #B5D4F4;border-top-color:#185FA5;border-radius:50%;animation:spin .8s linear infinite;z-index:5;
+}
 @media print{
-  .shell-topbar,.filter-bar,.kpi-bar,.exp,.btn-refresh,.ai-strip{display:none !important}
+  .shell-topbar,.filter-bar,.kpi-bar,.exp,.btn-query,.ai-strip{display:none !important}
   body{padding:0}
 }
 
@@ -223,7 +231,7 @@ body[data-tab="panel-partner"] #commonFilter{display:none}
     </div>
   </div>
   <div style="margin-left:auto;display:flex;gap:6px">
-    <button class="btn-refresh" style="background:#fff;border:1px solid #B5D4F4;border-radius:9px;padding:4px 11px;font-size:16px;color:#0C447C"><i class="ti ti-refresh" aria-hidden="true" style="font-size:17px"></i></button>
+    <button class="btn-query" style="background:#185FA5;border:1px solid #185FA5;border-radius:9px;padding:4px 15px;font-size:15px;font-weight:600;color:#fff;display:flex;align-items:center;gap:5px"><i class="ti ti-search" aria-hidden="true" style="font-size:16px"></i>조회</button>
     <div class="exp">
       <button class="btn-export"><i class="ti ti-download" aria-hidden="true" style="font-size:17px"></i>PDF/PPT</button>
       <div class="exp-menu hide">
@@ -966,6 +974,13 @@ async function fetchJson(path, params) {
   return res.json();
 }
 
+// 필터 재조회 중에는 해당 탭의 본문(.body)에 스피너 오버레이를 씌워
+// 새 데이터로 화면이 갱신될 때까지 로딩 중임을 알려준다.
+function setPanelLoading(panelId, isLoading) {
+  const body = document.querySelector(`#${panelId} .body`);
+  if (body) body.classList.toggle('loading', isLoading);
+}
+
 function getActiveFilters() {
   const val = id => { const el = document.getElementById(id); return el ? el.value : ''; };
   const params = {};
@@ -1031,18 +1046,36 @@ function renderAiSummary(data) {
   }
 }
 
+const AI_LOADING_HTML = '<i class="ti ti-loader-2 spin-loop" aria-hidden="true"></i> AI 분석 중…';
+
+function setAiLoading() {
+  document.querySelectorAll('.ai-strip .ab').forEach(el => { el.innerHTML = AI_LOADING_HTML; });
+  const summaryEl = document.getElementById('aiSummaryLines');
+  if (summaryEl) {
+    summaryEl.innerHTML = `<div style="display:flex;align-items:center;gap:7px;color:var(--color-text-secondary)">${AI_LOADING_HTML.replace('AI 분석 중', 'AI 요약을 생성하고 있습니다')}</div>`;
+  }
+}
+
+function setAiError() {
+  document.querySelectorAll('.ai-strip .ab').forEach(el => { el.textContent = 'AI 인사이트를 불러오지 못했습니다.'; });
+  const summaryEl = document.getElementById('aiSummaryLines');
+  if (summaryEl) summaryEl.innerHTML = '<div style="color:var(--color-text-secondary)">AI 요약을 불러오지 못했습니다.</div>';
+}
+
 // AI 인사이트(Top3, 대시보드 분석 요약)는 LLM 호출이라 차트 로딩보다 느릴 수 있어
-// loadDashboardData()의 Promise.all과는 별도로, 실패해도 기존 문구를 그대로 둔 채 진행한다.
+// loadDashboardData()의 Promise.all과는 별도로 진행하고, 응답이 오기 전까지는 로딩 표시를 보여준다.
 async function loadAiSummary() {
   const requestId = ++aiSummaryRequestId;
   const filters = getActiveFilters();
+  setAiLoading();
   try {
     const data = await fetchJson('/api/dashboard/ai-summary', filters);
     if (requestId !== aiSummaryRequestId) return;
     renderAiSummary(data);
   } catch (err) {
     if (requestId !== aiSummaryRequestId) return;
-    console.error('AI 요약 로드 실패 — 기존 문구 유지', err);
+    console.error('AI 요약 로드 실패', err);
+    setAiError();
   }
 }
 
@@ -1052,6 +1085,7 @@ async function loadDashboardData() {
   const requestId = ++dashboardRequestId;
   const filters = getActiveFilters();
   loadAiSummary(); // 차트 로딩과 별도로 병렬 진행 — 느려도 차트 렌더링을 막지 않음
+  setPanelLoading('panel-sales', true);
 
   try {
     const [kpi, salesType, region, dept, newBuyers] = await Promise.all([
@@ -1096,6 +1130,7 @@ async function loadDashboardData() {
   }
 
   if (requestId !== dashboardRequestId) return;
+  setPanelLoading('panel-sales', false);
   drawKpi();
   drawSalesType();
   drawRegion();
@@ -1145,12 +1180,10 @@ document.getElementById('panel-sales').__refresh = () => loadDashboardData();
     if (window.loadBuyerData) window.loadBuyerData();
   };
 
+  // 필터 변경은 즉시 반영하지 않고, [조회] 버튼(.btn-query)을 눌렀을 때만
+  // 공통 클릭 핸들러가 activePanel().__refresh()를 호출해 실제 데이터를 다시 가져온다.
   loadCompanies().then(triggerReload);
-  company.addEventListener('change', async () => { await fillProducts(company.value); triggerReload(); });
-  product.addEventListener('change', triggerReload);
-  document.getElementById('fltRegion').addEventListener('change', triggerReload);
-  document.getElementById('fltDept').addEventListener('change', triggerReload);
-  document.getElementById('fltPeriod').addEventListener('change', triggerReload);
+  company.addEventListener('change', () => { fillProducts(company.value); });
 
   // 채널 체크박스 드롭다운
   const chan = document.getElementById('fltChannel');
@@ -1172,18 +1205,7 @@ document.getElementById('panel-sales').__refresh = () => loadDashboardData();
     }
     const checked = boxes.filter(b => b.checked);
     label.textContent = checked.length === 2 ? '병의원+도매' : checked[0].value;
-    triggerReload();
   });
-
-  // 새로고침 시 공통 필터 초기화
-  window.__resetCommonFilter = () => {
-    if (company.options.length) company.value = company.options[0].value;
-    fillProducts(company.value);
-    document.getElementById('fltRegion').value = '전체 지역';
-    document.getElementById('fltDept').value = '전체 진료과';
-    boxes.forEach(b => b.checked = true);
-    label.textContent = '병의원+도매';
-  };
 })();
 </script>
 
@@ -1254,6 +1276,7 @@ let buyerRequestId = 0;
 async function loadBuyerData(){
   const requestId = ++buyerRequestId;
   const filters = getActiveFilters();
+  setPanelLoading('panel-buyers', true);
 
   try {
     const [trend, segs] = await Promise.all([
@@ -1267,9 +1290,11 @@ async function loadBuyerData(){
   } catch (err) {
     if (requestId !== buyerRequestId) return;
     console.error('구매처 분석 데이터 로드 실패', err);
+    setPanelLoading('panel-buyers', false);
     return;
   }
 
+  setPanelLoading('panel-buyers', false);
   drawTrend(); drawHm(); drawRfm();
 }
 
@@ -1804,11 +1829,10 @@ document.getElementById('panel-buyers').__refresh = () => {
   }
 
   document.addEventListener('click', e => {
-    const refresh = e.target.closest('.btn-refresh');
-    if(refresh){
-      const icon = refresh.querySelector('i');
+    const query = e.target.closest('.btn-query');
+    if(query){
+      const icon = query.querySelector('i');
       if(icon){ icon.classList.remove('spinning'); void icon.offsetWidth; icon.classList.add('spinning'); setTimeout(() => icon.classList.remove('spinning'), 650); }
-      if(window.__resetCommonFilter) window.__resetCommonFilter();
       const p = activePanel();
       if(p && p.__refresh) p.__refresh();
       return;
