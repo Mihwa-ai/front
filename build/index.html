@@ -244,13 +244,13 @@ body[data-tab="panel-partner"] #commonFilter{display:none}
 
 <!-- ════════════════ 공통 KPI 바 ════════════════ -->
 <div class="kpi-bar" id="commonKpi">
-  <div class="kc"><div class="kl">총 매출</div><div class="kv">₩24.1억</div><div class="kd ku">▲ 8.4%</div></div>
-  <div class="kc"><div class="kl">판매수량</div><div class="kv">12,480</div><div class="kd ku">▲ 5.2%</div></div>
-  <div class="kc"><div class="kl">구매처 수</div><div class="kv">1,204</div><div class="kd ku">▲ 3.1%</div></div>
-  <div class="kc"><div class="kl">신규 구매처</div><div class="kv">142</div><div class="kd ku">▲ 22</div></div>
-  <div class="kc"><div class="kl">재구매율</div><div class="kv">68.4%</div><div class="kd kdn">▼ 1.2%p</div></div>
-  <div class="kc"><div class="kl">휴면 전환율</div><div class="kv">11.7%</div><div class="kd kdn">▼ 0.8%p</div></div>
-  <div class="kc"><div class="kl">전월 성장률</div><div class="kv">+8.4%</div><div class="kd kn">MoM</div></div>
+  <div class="kc"><div class="kl">총 매출</div><div class="kv" id="kvSales">₩24.1억</div><div class="kd ku" id="kdSales">▲ 8.4%</div></div>
+  <div class="kc"><div class="kl">판매수량</div><div class="kv" id="kvQty">12,480</div><div class="kd ku" id="kdQty">▲ 5.2%</div></div>
+  <div class="kc"><div class="kl">구매처 수</div><div class="kv" id="kvBuyers">1,204</div><div class="kd ku" id="kdBuyers">▲ 3.1%</div></div>
+  <div class="kc"><div class="kl">신규 구매처</div><div class="kv" id="kvNewBuyers">142</div><div class="kd ku" id="kdNewBuyers">▲ 22</div></div>
+  <div class="kc"><div class="kl">재구매율</div><div class="kv" id="kvRepurchase">68.4%</div><div class="kd kdn" id="kdRepurchase">▼ 1.2%p</div></div>
+  <div class="kc"><div class="kl">휴면 전환율</div><div class="kv" id="kvDormant">11.7%</div><div class="kd kdn" id="kdDormant">▼ 0.8%p</div></div>
+  <div class="kc"><div class="kl">전월 성장률</div><div class="kv" id="kvGrowth">+8.4%</div><div class="kd kn">MoM</div></div>
 </div>
 
 <!-- ════════════════ 매출 대시보드 ════════════════ -->
@@ -1059,6 +1059,60 @@ async function loadAiSummary() {
   }
 }
 
+// KPI 요약 바 상단 7개 타일(총매출/판매수량/구매처수/신규구매처/재구매율/휴면전환율/전월성장률)을
+// 실제 API 응답으로 채운다. 재구매율은 buyer-trend의 당월 활동(신규+재구매) 중 재구매 비중,
+// 휴면전환율은 buyer-segments의 '이탈위험' 세그먼트가 전체 구매처에서 차지하는 비중으로 계산 —
+// 둘 다 이미 다른 화면에서 쓰는 것과 동일한 기준(휴면 갭 3개월)을 그대로 재사용한다.
+function setKpiTile(valueId, deltaId, valueText, delta, { deltaUnit = '%', signed = false } = {}) {
+  const valueEl = document.getElementById(valueId);
+  if (valueEl) valueEl.textContent = valueText;
+
+  if (!deltaId) return;
+  const deltaEl = document.getElementById(deltaId);
+  if (!deltaEl) return;
+  if (delta === null || delta === undefined || Number.isNaN(delta)) {
+    deltaEl.textContent = '데이터 없음';
+    deltaEl.className = 'kd kn';
+    return;
+  }
+  const rounded = Math.round(delta * 10) / 10;
+  const magnitude = Math.abs(rounded) + deltaUnit;
+  if (rounded > 0) { deltaEl.textContent = `▲ ${signed ? '+' : ''}${magnitude}`; deltaEl.className = 'kd ku'; }
+  else if (rounded < 0) { deltaEl.textContent = `▼ ${magnitude}`; deltaEl.className = 'kd kdn'; }
+  else { deltaEl.textContent = `– 0${deltaUnit}`; deltaEl.className = 'kd kn'; }
+}
+
+function renderKpiSummaryBar({ kpi, newBuyers, buyerTrend, buyerSegments }) {
+  const lastIdx = kpi.months.length - 1;
+  const prevIdx = lastIdx - 1;
+  const pctChange = (curr, prev) => (prev ? ((curr - prev) / prev) * 100 : null);
+
+  setKpiTile('kvSales', 'kdSales', `₩${kpi.sales.curr[lastIdx].toFixed(1)}억`, pctChange(kpi.sales.curr[lastIdx], kpi.sales.curr[prevIdx]));
+  setKpiTile('kvQty', 'kdQty', Math.round(kpi.qty.curr[lastIdx]).toLocaleString(), pctChange(kpi.qty.curr[lastIdx], kpi.qty.curr[prevIdx]));
+  setKpiTile('kvBuyers', 'kdBuyers', Math.round(kpi.buyer.curr[lastIdx]).toLocaleString(), pctChange(kpi.buyer.curr[lastIdx], kpi.buyer.curr[prevIdx]));
+  setKpiTile('kvNewBuyers', 'kdNewBuyers', newBuyers.total.toLocaleString(), newBuyers.delta, { deltaUnit: '', signed: false });
+
+  const bLast = buyerTrend.new.length - 1;
+  const bPrev = bLast - 1;
+  const repurchaseRate = (i) => {
+    const active = buyerTrend.new[i] + buyerTrend.repurchase[i];
+    return active > 0 ? (buyerTrend.repurchase[i] / active) * 100 : null;
+  };
+  const rrCurr = repurchaseRate(bLast);
+  const rrPrev = repurchaseRate(bPrev);
+  setKpiTile('kvRepurchase', 'kdRepurchase', rrCurr != null ? `${rrCurr.toFixed(1)}%` : '데이터 없음', rrCurr != null && rrPrev != null ? rrCurr - rrPrev : null, { deltaUnit: '%p' });
+
+  const churnSeg = buyerSegments.segments.find(s => s.seg === '이탈위험');
+  const totalNow = buyerSegments.segments.reduce((sum, s) => sum + s.count, 0);
+  const totalPrev = buyerSegments.segments.reduce((sum, s) => sum + (s.count - s.deltaCount), 0);
+  const dormantNow = churnSeg && totalNow > 0 ? (churnSeg.count / totalNow) * 100 : null;
+  const dormantPrev = churnSeg && totalPrev > 0 ? ((churnSeg.count - churnSeg.deltaCount) / totalPrev) * 100 : null;
+  setKpiTile('kvDormant', 'kdDormant', dormantNow != null ? `${dormantNow.toFixed(1)}%` : '데이터 없음', dormantNow != null && dormantPrev != null ? dormantNow - dormantPrev : null, { deltaUnit: '%p' });
+
+  const growthPct = pctChange(kpi.sales.curr[lastIdx], kpi.sales.curr[prevIdx]);
+  setKpiTile('kvGrowth', null, growthPct != null ? `${growthPct >= 0 ? '+' : ''}${Math.round(growthPct * 10) / 10}%` : '데이터 없음');
+}
+
 let dashboardRequestId = 0;
 
 async function loadDashboardData() {
@@ -1068,15 +1122,19 @@ async function loadDashboardData() {
   setPanelLoading('panel-sales', true);
 
   try {
-    const [kpi, salesType, region, dept, newBuyers] = await Promise.all([
+    const [kpi, salesType, region, dept, newBuyers, buyerTrend, buyerSegments] = await Promise.all([
       fetchJson('/api/dashboard/kpi-trend', filters),
       fetchJson('/api/dashboard/sales-type-trend', filters),
       fetchJson('/api/dashboard/region-sales', filters),
       fetchJson('/api/dashboard/dept-sales', filters),
       fetchJson('/api/dashboard/new-buyers', filters),
+      fetchJson('/api/dashboard/buyer-trend', filters),
+      fetchJson('/api/dashboard/buyer-segments', filters),
     ]);
 
     if (requestId !== dashboardRequestId) return; // superseded by a newer filter change
+
+    renderKpiSummaryBar({ kpi, newBuyers, buyerTrend, buyerSegments });
 
     kpiData = {
       sales: { curr: kpi.sales.curr, prev: kpi.sales.prev, ...KPI_META.sales, max: Math.max(...kpi.sales.curr, ...kpi.sales.prev, 1) * 1.2 },
