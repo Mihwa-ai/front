@@ -511,7 +511,7 @@ body[data-tab="panel-partner"] #commonFilter{display:none}
     <span style="margin-left:auto;font-size:14px;color:#854F0B">2025.11 ~ 2026.01</span>
   </div>
 
-  <div style="padding:14px 20px;background:var(--color-background-tertiary);border-radius:0 0 var(--border-radius-lg) var(--border-radius-lg);display:flex;flex-direction:column;gap:14px">
+  <div class="body" style="padding:14px 20px;background:var(--color-background-tertiary);border-radius:0 0 var(--border-radius-lg) var(--border-radius-lg);display:flex;flex-direction:column;gap:14px">
 
     <div style="background:#E6F1FB;border:1px solid #B5D4F4;border-radius:var(--border-radius-lg);padding:17px 20px">
       <div class="row" style="justify-content:space-between;margin-bottom:8px">
@@ -519,19 +519,20 @@ body[data-tab="panel-partner"] #commonFilter{display:none}
           <i class="ti ti-sparkles" aria-hidden="true" style="font-size:21px;color:#185FA5"></i>
           <span style="font-size:17px;font-weight:500;color:#0C447C">Executive Summary</span>
         </div>
-        <span style="font-size:14px;color:#185FA5;display:flex;align-items:center;gap:6px"><i class="ti ti-clock" aria-hidden="true" style="font-size:17px"></i>2025.11.30 · 03:00 업데이트</span>
       </div>
-      <div class="rowt" style="margin-bottom:5px;font-size:16px;line-height:1.55">
-        <span style="color:#1D9E75;font-weight:500;font-size:20px;flex-shrink:0;margin-top:1px">↑</span>
-        <span style="color:#0C447C">서울 지역 내과·소아과 신규 구매처 <strong>+22개처</strong> 유입, 전월 대비 매출 <strong>+24.6%</strong> 급성장. A백신 판매수량 전년 동기 대비 <strong>+31%</strong> 증가.</span>
-      </div>
-      <div class="rowt" style="margin-bottom:5px;font-size:16px;line-height:1.55">
-        <span style="color:#E24B4A;font-weight:500;font-size:20px;flex-shrink:0;margin-top:1px">↓</span>
-        <span style="color:#0C447C">경기·인천 권역 기존 거래처 <strong>144개처</strong> 90일 이상 미구매 이탈 신호. 예상 방어 매출 <strong>₩38M</strong> — 즉각 CRM 실행 권장.</span>
-      </div>
-      <div class="rowt" style="font-size:16px;line-height:1.55">
-        <span style="color:#BA7517;font-weight:500;font-size:20px;flex-shrink:0;margin-top:1px">→</span>
-        <span style="color:#0C447C">도매 채널 비중 <strong>3%p 상승</strong>(37%→40%). 병의원 직접 채널 방어를 위한 프로모션 전략 재설계 필요 시점.</span>
+      <div id="execSummaryLines">
+        <div class="rowt" style="margin-bottom:5px;font-size:16px;line-height:1.55">
+          <span style="color:#1D9E75;font-weight:500;font-size:20px;flex-shrink:0;margin-top:1px">↑</span>
+          <span style="color:#0C447C">서울 지역 내과·소아과 신규 구매처 <strong>+22개처</strong> 유입, 전월 대비 매출 <strong>+24.6%</strong> 급성장. A백신 판매수량 전년 동기 대비 <strong>+31%</strong> 증가.</span>
+        </div>
+        <div class="rowt" style="margin-bottom:5px;font-size:16px;line-height:1.55">
+          <span style="color:#E24B4A;font-weight:500;font-size:20px;flex-shrink:0;margin-top:1px">↓</span>
+          <span style="color:#0C447C">경기·인천 권역 기존 거래처 <strong>144개처</strong> 90일 이상 미구매 이탈 신호. 예상 방어 매출 <strong>₩38M</strong> — 즉각 CRM 실행 권장.</span>
+        </div>
+        <div class="rowt" style="font-size:16px;line-height:1.55">
+          <span style="color:#BA7517;font-weight:500;font-size:20px;flex-shrink:0;margin-top:1px">→</span>
+          <span style="color:#0C447C">도매 채널 비중 <strong>3%p 상승</strong>(37%→40%). 병의원 직접 채널 방어를 위한 프로모션 전략 재설계 필요 시점.</span>
+        </div>
       </div>
     </div>
 
@@ -540,49 +541,40 @@ body[data-tab="panel-partner"] #commonFilter{display:none}
       <div class="ins-grid">
         <div class="ins-card" style="border-left:3px solid #1D9E75;border-radius:0 var(--border-radius-md) var(--border-radius-md) 0">
           <span class="ins-type" style="background:#EAF3DE;color:#27500A"><i class="ti ti-trending-up" aria-hidden="true" style="font-size:16px"></i>Growth</span>
-          <div class="ins-body">서울 내과·소아과 매출 <strong>+31%</strong>. 신규 18개처 유입 주도. A백신 집중 노출 강화 권장.</div>
-          <div class="ins-action" style="color:#1D9E75"><i class="ti ti-arrow-right" aria-hidden="true" style="font-size:17px"></i>서울 확장 프로모션 기획</div>
+          <div class="ins-body" id="insGrowthBody">서울 내과·소아과 매출 <strong>+31%</strong>. 신규 18개처 유입 주도. A백신 집중 노출 강화 권장.</div>
+          <div class="ins-action" id="insGrowthAction" style="color:#1D9E75"><i class="ti ti-arrow-right" aria-hidden="true" style="font-size:17px"></i>서울 확장 프로모션 기획</div>
         </div>
         <div class="ins-card" style="border-left:3px solid #E24B4A;border-radius:0 var(--border-radius-md) var(--border-radius-md) 0">
           <span class="ins-type" style="background:#FCEBEB;color:#791F1F"><i class="ti ti-alert-triangle" aria-hidden="true" style="font-size:16px"></i>Risk</span>
-          <div class="ins-body">경기·인천 매출 <strong>–15.4%</strong>. 이탈위험 144개처 즉시 CRM 실행 시 방어 <strong>₩38M</strong>.</div>
-          <div class="ins-action" style="color:#E24B4A"><i class="ti ti-arrow-right" aria-hidden="true" style="font-size:17px"></i>이탈 위험 CRM 즉시 실행</div>
+          <div class="ins-body" id="insRiskBody">경기·인천 매출 <strong>–15.4%</strong>. 이탈위험 144개처 즉시 CRM 실행 시 방어 <strong>₩38M</strong>.</div>
+          <div class="ins-action" id="insRiskAction" style="color:#E24B4A"><i class="ti ti-arrow-right" aria-hidden="true" style="font-size:17px"></i>이탈 위험 CRM 즉시 실행</div>
         </div>
         <div class="ins-card" style="border-left:3px solid #BA7517;border-radius:0 var(--border-radius-md) var(--border-radius-md) 0">
           <span class="ins-type" style="background:#FAEEDA;color:#633806"><i class="ti ti-pill" aria-hidden="true" style="font-size:16px"></i>Product</span>
-          <div class="ins-body">B백신 전환율 <strong>–7.3%p</strong>. 가격 저항 탐지. 번들 프로모션 검토 필요.</div>
-          <div class="ins-action" style="color:#BA7517"><i class="ti ti-arrow-right" aria-hidden="true" style="font-size:17px"></i>B백신 전환율 개선 방안</div>
+          <div class="ins-body" id="insProductBody">B백신 전환율 <strong>–7.3%p</strong>. 가격 저항 탐지. 번들 프로모션 검토 필요.</div>
+          <div class="ins-action" id="insProductAction" style="color:#BA7517"><i class="ti ti-arrow-right" aria-hidden="true" style="font-size:17px"></i>B백신 전환율 개선 방안</div>
         </div>
         <div class="ins-card" style="border-left:3px solid #378ADD;border-radius:0 var(--border-radius-md) var(--border-radius-md) 0">
           <span class="ins-type" style="background:#E6F1FB;color:#0C447C"><i class="ti ti-user-plus" aria-hidden="true" style="font-size:16px"></i>Customer</span>
-          <div class="ins-body">2차 미구매 <strong>132개처</strong>. 30일 이내 리마인더 발송 시 전환율 <strong>+18%</strong> 예측.</div>
-          <div class="ins-action" style="color:#378ADD"><i class="ti ti-arrow-right" aria-hidden="true" style="font-size:17px"></i>2차 구매 유도 캠페인</div>
+          <div class="ins-body" id="insCustomerBody">2차 미구매 <strong>132개처</strong>. 30일 이내 리마인더 발송 시 전환율 <strong>+18%</strong> 예측.</div>
+          <div class="ins-action" id="insCustomerAction" style="color:#378ADD"><i class="ti ti-arrow-right" aria-hidden="true" style="font-size:17px"></i>2차 구매 유도 캠페인</div>
         </div>
         <div class="ins-card" style="border-left:3px solid #7F77DD;border-radius:0 var(--border-radius-md) var(--border-radius-md) 0">
           <span class="ins-type" style="background:#EEEDFE;color:#3C3489"><i class="ti ti-truck-delivery" aria-hidden="true" style="font-size:16px"></i>Channel</span>
-          <div class="ins-body">도매 비중 <strong>40%</strong>로 상승. 병의원 전용 할인 패키지 및 MR 접촉 강화 필요.</div>
-          <div class="ins-action" style="color:#7F77DD"><i class="ti ti-arrow-right" aria-hidden="true" style="font-size:17px"></i>병의원 채널 방어 기획</div>
+          <div class="ins-body" id="insChannelBody">도매 비중 <strong>40%</strong>로 상승. 병의원 전용 할인 패키지 및 MR 접촉 강화 필요.</div>
+          <div class="ins-action" id="insChannelAction" style="color:#7F77DD"><i class="ti ti-arrow-right" aria-hidden="true" style="font-size:17px"></i>병의원 채널 방어 기획</div>
         </div>
-
-        <div class="ins-card changed" style="border-left:3px solid #E24B4A;border-radius:0 var(--border-radius-md) var(--border-radius-md) 0;position:relative">
-          <div class="changed-lbl">외부 데이터 반영</div>
-          <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
-            <span class="src-tag src-iqvia"><i class="ti ti-file-spreadsheet" aria-hidden="true" style="font-size:14px"></i>IQVIA Q4</span>
-            <span class="src-tag src-gov"><i class="ti ti-building-government" aria-hidden="true" style="font-size:14px"></i>국가출하승인</span>
-            <span class="src-tag src-sims"><i class="ti ti-database" aria-hidden="true" style="font-size:14px"></i>출고 데이터</span>
-          </div>
+        <div class="ins-card" style="border-left:3px solid #E24B4A;border-radius:0 var(--border-radius-md) var(--border-radius-md) 0">
           <span class="ins-type" style="background:#FCEBEB;color:#791F1F"><i class="ti ti-replace" aria-hidden="true" style="font-size:16px"></i>경쟁품</span>
-          <div class="ins-body">
-            <strong>프리오릭스 26년 공급 재개</strong> — IQVIA Q4 데이터 기준 엠엠알 M/S <strong>–8.2%p</strong> 하락 감지. 25년 4Q 출고 <strong>33,640 Vial</strong>(1Q 대비 –63%). 국가출하승인 통과 시 추가 물량 유입 위험.
-          </div>
-          <div class="ins-action" style="color:#E24B4A"><i class="ti ti-arrow-right" aria-hidden="true" style="font-size:17px"></i>프리오릭스 대응 — 병의원 락인 전략 강화</div>
+          <div class="ins-body" id="insCompetitorBody">경쟁사 시장점유율 데이터(IQVIA 등)가 아직 연동되지 않아 분석할 수 없습니다.</div>
+          <div class="ins-action" id="insCompetitorAction" style="color:#E24B4A"></div>
         </div>
       </div>
     </div>
 
     <div>
       <div class="sec-lbl"><i class="ti ti-list-check" aria-hidden="true" style="font-size:20px;color:#185FA5"></i>추천 실행과제</div>
-      <div class="card">
+      <div class="card" id="actionItemsList">
         <div class="arow">
           <div class="action-num">1</div>
           <div style="flex:1"><div style="font-size:16px;line-height:1.5;margin-bottom:2px">경기·인천 이탈 위험 <strong>Top 10 거래처</strong> 즉시 접촉 — 재구매 쿠폰 발행</div><div style="font-size:14px;color:#1D9E75;display:flex;align-items:center;gap:4px"><i class="ti ti-trending-up" aria-hidden="true" style="font-size:16px"></i>예상 방어 매출 ₩12M · 즉시 실행</div></div>
@@ -593,20 +585,8 @@ body[data-tab="panel-partner"] #commonFilter{display:none}
           <div style="flex:1"><div style="font-size:16px;line-height:1.5;margin-bottom:2px">2차 미구매 <strong>132개처</strong> 30일 리마인더 캠페인 발송</div><div style="font-size:14px;color:#1D9E75;display:flex;align-items:center;gap:4px"><i class="ti ti-trending-up" aria-hidden="true" style="font-size:16px"></i>전환율 +18% 예측</div></div>
           <div style="display:flex;gap:6px;flex-shrink:0"><button style="font-size:14px;padding:4px 13px;border-radius:6px;border:1px solid #1D9E75;background:#EAF3DE;color:#27500A;cursor:pointer">실행</button><button style="font-size:14px;padding:4px 13px;border-radius:6px;border:1px solid var(--color-border-secondary);background:var(--color-background-secondary);color:var(--color-text-secondary);cursor:pointer">완료</button></div>
         </div>
-        <div class="arow" style="background:var(--color-background-info);border-radius:var(--border-radius-md);padding:11px;margin-top:4px;border-bottom:none">
-          <div class="action-num" style="background:#E24B4A">3</div>
-          <div style="flex:1">
-            <div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">
-              <div style="font-size:16px;line-height:1.5"><strong>프리오릭스 공급 재개 대응</strong> — 엠엠알 기존 구매처 병의원 전용 락인 프로모션 설계</div>
-              <span class="src-tag src-gov" style="flex-shrink:0"><i class="ti ti-building-government" aria-hidden="true" style="font-size:14px"></i>국검 데이터</span>
-              <span class="src-tag src-iqvia" style="flex-shrink:0"><i class="ti ti-file-spreadsheet" aria-hidden="true" style="font-size:14px"></i>IQVIA</span>
-            </div>
-            <div style="font-size:14px;color:#E24B4A;display:flex;align-items:center;gap:4px"><i class="ti ti-alert-triangle" aria-hidden="true" style="font-size:16px"></i>25년 4Q 출고 –63% / 프리오릭스 국검 통과 모니터링 중</div>
-          </div>
-          <div style="display:flex;gap:6px;flex-shrink:0"><button style="font-size:14px;padding:4px 13px;border-radius:6px;border:1px solid #E24B4A;background:#FCEBEB;color:#A32D2D;cursor:pointer">실행</button><button style="font-size:14px;padding:4px 13px;border-radius:6px;border:1px solid var(--color-border-secondary);background:var(--color-background-secondary);color:var(--color-text-secondary);cursor:pointer">완료</button></div>
-        </div>
         <div class="arow">
-          <div class="action-num">4</div>
+          <div class="action-num">3</div>
           <div style="flex:1"><div style="font-size:16px;line-height:1.5;margin-bottom:2px">병의원 전용 <strong>즉시할인 패키지</strong> 프로모션 설계 — 12월 적용</div><div style="font-size:14px;color:#185FA5;display:flex;align-items:center;gap:4px"><i class="ti ti-calendar" aria-hidden="true" style="font-size:16px"></i>채널 비중 방어</div></div>
           <div style="display:flex;gap:6px;flex-shrink:0"><button style="font-size:14px;padding:4px 13px;border-radius:6px;border:1px solid #B5D4F4;background:#E6F1FB;color:#0C447C;cursor:pointer">검토</button><button style="font-size:14px;padding:4px 13px;border-radius:6px;border:1px solid var(--color-border-secondary);background:var(--color-background-secondary);color:var(--color-text-secondary);cursor:pointer">완료</button></div>
         </div>
@@ -1854,6 +1834,108 @@ document.getElementById('panel-buyers').__refresh = () => {
     document.querySelectorAll('.exp-menu').forEach(m => m.classList.add('hide'));
   });
 })();
+</script>
+
+<!-- ════════════════ AI 인사이트 탭 스크립트 ════════════════ -->
+<script>
+const INSIGHT_CARD_KEYS = ['growth', 'risk', 'product', 'customer', 'channel', 'competitor'];
+
+const INSIGHT_LOADING_HTML = '<i class="ti ti-loader-2 spin-loop" aria-hidden="true"></i> AI 분석 중…';
+
+function setAiInsightLoading() {
+  const execEl = document.getElementById('execSummaryLines');
+  if (execEl) execEl.innerHTML = `<div style="display:flex;align-items:center;gap:7px;color:var(--color-text-secondary);font-size:16px">${INSIGHT_LOADING_HTML}</div>`;
+
+  INSIGHT_CARD_KEYS.forEach(key => {
+    const body = document.getElementById(`ins${key[0].toUpperCase()}${key.slice(1)}Body`);
+    const action = document.getElementById(`ins${key[0].toUpperCase()}${key.slice(1)}Action`);
+    if (body) body.innerHTML = INSIGHT_LOADING_HTML;
+    if (action) action.textContent = '';
+  });
+
+  const listEl = document.getElementById('actionItemsList');
+  if (listEl) listEl.innerHTML = `<div style="padding:20px;display:flex;align-items:center;gap:7px;color:var(--color-text-secondary)">${INSIGHT_LOADING_HTML}</div>`;
+}
+
+function setAiInsightError() {
+  const execEl = document.getElementById('execSummaryLines');
+  if (execEl) execEl.innerHTML = '<div style="color:var(--color-text-secondary)">AI 인사이트를 불러오지 못했습니다.</div>';
+
+  INSIGHT_CARD_KEYS.forEach(key => {
+    const body = document.getElementById(`ins${key[0].toUpperCase()}${key.slice(1)}Body`);
+    const action = document.getElementById(`ins${key[0].toUpperCase()}${key.slice(1)}Action`);
+    if (body) body.textContent = '불러오지 못했습니다.';
+    if (action) action.textContent = '';
+  });
+
+  const listEl = document.getElementById('actionItemsList');
+  if (listEl) listEl.innerHTML = '<div style="padding:20px;color:var(--color-text-secondary)">불러오지 못했습니다.</div>';
+}
+
+function renderAiInsightTab(data) {
+  const execEl = document.getElementById('execSummaryLines');
+  const lines = Array.isArray(data.executiveSummary) ? data.executiveSummary.filter(Boolean).slice(0, 3) : [];
+  if (execEl && lines.length) {
+    const icons = [{ sym: '↑', color: '#1D9E75' }, { sym: '↓', color: '#E24B4A' }, { sym: '→', color: '#BA7517' }];
+    execEl.innerHTML = lines.map((line, i) => {
+      const icon = icons[i] || icons[icons.length - 1];
+      const marginBottom = i < lines.length - 1 ? '5px' : '0';
+      return `<div class="rowt" style="margin-bottom:${marginBottom};font-size:16px;line-height:1.55"><span style="color:${icon.color};font-weight:500;font-size:20px;flex-shrink:0;margin-top:1px">${icon.sym}</span><span style="color:#0C447C">${escapeHtml(line)}</span></div>`;
+    }).join('');
+  }
+
+  const cards = data.cards || {};
+  INSIGHT_CARD_KEYS.forEach(key => {
+    const card = cards[key];
+    const body = document.getElementById(`ins${key[0].toUpperCase()}${key.slice(1)}Body`);
+    const action = document.getElementById(`ins${key[0].toUpperCase()}${key.slice(1)}Action`);
+    if (!card) return;
+    if (body) body.textContent = card.body || (card.hasData ? '' : '데이터가 부족하여 분석할 수 없습니다.');
+    if (action) {
+      action.innerHTML = card.hasData && card.action
+        ? `<i class="ti ti-arrow-right" aria-hidden="true" style="font-size:17px"></i>${escapeHtml(card.action)}`
+        : '';
+    }
+  });
+
+  const listEl = document.getElementById('actionItemsList');
+  const items = Array.isArray(data.actionItems) ? data.actionItems.filter(it => it && it.text) : [];
+  if (listEl && items.length) {
+    listEl.innerHTML = items.map((item, i) => `
+      <div class="arow">
+        <div class="action-num">${i + 1}</div>
+        <div style="flex:1">
+          <div style="font-size:16px;line-height:1.5;margin-bottom:2px">${escapeHtml(item.text)}</div>
+          ${item.effect ? `<div style="font-size:14px;color:#1D9E75;display:flex;align-items:center;gap:4px"><i class="ti ti-trending-up" aria-hidden="true" style="font-size:16px"></i>${escapeHtml(item.effect)}</div>` : ''}
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0"><button style="font-size:14px;padding:4px 13px;border-radius:6px;border:1px solid #1D9E75;background:#EAF3DE;color:#27500A;cursor:pointer">실행</button><button style="font-size:14px;padding:4px 13px;border-radius:6px;border:1px solid var(--color-border-secondary);background:var(--color-background-secondary);color:var(--color-text-secondary);cursor:pointer">완료</button></div>
+      </div>
+    `).join('');
+  }
+}
+
+let aiInsightTabRequestId = 0;
+
+async function loadAiInsightTab() {
+  const requestId = ++aiInsightTabRequestId;
+  const filters = getActiveFilters();
+  setAiInsightLoading();
+  setPanelLoading('panel-ai', true);
+  try {
+    const data = await fetchJson('/api/dashboard/ai-insight-tab', filters);
+    if (requestId !== aiInsightTabRequestId) return;
+    renderAiInsightTab(data);
+  } catch (err) {
+    if (requestId !== aiInsightTabRequestId) return;
+    console.error('AI 인사이트 탭 로드 실패', err);
+    setAiInsightError();
+  } finally {
+    if (requestId === aiInsightTabRequestId) setPanelLoading('panel-ai', false);
+  }
+}
+
+document.getElementById('panel-ai').__refresh = () => loadAiInsightTab();
+loadAiInsightTab();
 </script>
 
 </body>
