@@ -1111,6 +1111,31 @@ function renderKpiSummaryBar({ kpi, newBuyers, buyerTrend, buyerSegments }) {
   setKpiTile('kvGrowth', null, growthPct != null ? `${growthPct >= 0 ? '+' : ''}${Math.round(growthPct * 10) / 10}%` : '데이터 없음');
 }
 
+const KPI_VALUE_IDS = ['kvSales', 'kvQty', 'kvBuyers', 'kvNewBuyers', 'kvRepurchase', 'kvDormant', 'kvGrowth'];
+const KPI_DELTA_IDS = ['kdSales', 'kdQty', 'kdBuyers', 'kdNewBuyers', 'kdRepurchase', 'kdDormant'];
+
+function setKpiBarLoading() {
+  KPI_VALUE_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = '<i class="ti ti-loader-2 spin-loop" aria-hidden="true"></i>';
+  });
+  KPI_DELTA_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = ''; el.className = 'kd kn'; }
+  });
+}
+
+function setKpiBarError() {
+  KPI_VALUE_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = '–';
+  });
+  KPI_DELTA_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = '불러오지 못함'; el.className = 'kd kn'; }
+  });
+}
+
 let dashboardRequestId = 0;
 
 async function loadDashboardData() {
@@ -1118,6 +1143,7 @@ async function loadDashboardData() {
   const filters = getActiveFilters();
   loadAiSummary(); // 차트 로딩과 별도로 병렬 진행 — 느려도 차트 렌더링을 막지 않음
   setPanelLoading('panel-sales', true);
+  setKpiBarLoading();
 
   try {
     const [kpi, salesType, region, dept, newBuyers, buyerTrend, buyerSegments] = await Promise.all([
@@ -1163,6 +1189,7 @@ async function loadDashboardData() {
   } catch (err) {
     if (requestId !== dashboardRequestId) return;
     console.error('대시보드 데이터 로드 실패', err);
+    setKpiBarError();
   }
 
   if (requestId !== dashboardRequestId) return;
