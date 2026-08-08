@@ -330,7 +330,7 @@ body[data-tab="panel-partner"] #commonFilter{display:none}
       </div>
       <div class="card" style="border-left:3px solid #378ADD;border-radius:0 var(--border-radius-md) var(--border-radius-md) 0">
         <div class="ct"><span style="display:flex;align-items:center;gap:6px"><i class="ti ti-sparkles" aria-hidden="true" style="color:#185FA5;font-size:20px"></i>대시보드 분석 요약 (AI)</span></div>
-        <div style="font-size:16px;line-height:1.6">
+        <div id="aiSummaryLines" style="font-size:16px;line-height:1.6">
           <div style="margin-bottom:5px;display:flex;gap:7px"><span style="color:#1D9E75;font-weight:500">↑</span>서울 지역 내과·소아과 중심 매출 <strong>+24.6%</strong> 급증 — 신규 거래처 유입 주도.</div>
           <div style="margin-bottom:5px;display:flex;gap:7px"><span style="color:#E24B4A;font-weight:500">↓</span>경기·인천 기존 거래처 구매 감소 — 이탈 위험 <strong>142개처</strong> 즉시 대응 필요.</div>
           <div style="display:flex;gap:7px"><span style="color:#BA7517;font-weight:500">→</span>도매 채널 비중 <strong>37%</strong> 유지 — 병의원 채널 방어 전략 지속 유효.</div>
@@ -763,7 +763,7 @@ window.addEventListener('afterprint', () => {
 const API_BASE = window.API_BASE || (
   ['localhost', '127.0.0.1'].includes(location.hostname)
     ? 'http://localhost:3000'
-    : 'https://backend-hggf.onrender.com'
+    : 'https://back-1-1ks3.onrender.com'
 );
 
 const KPI_META = {
@@ -1004,11 +1004,52 @@ function initPeriodOptions() {
 }
 initPeriodOptions();
 
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+let aiSummaryRequestId = 0;
+
+function renderAiSummary(data) {
+  const top3 = Array.isArray(data.top3) ? data.top3 : [];
+  const stripCards = document.querySelectorAll('.ai-strip .ab');
+  top3.forEach((text, i) => { if (stripCards[i]) stripCards[i].textContent = text; });
+
+  const summaryEl = document.getElementById('aiSummaryLines');
+  if (summaryEl && typeof data.summary === 'string') {
+    const lines = data.summary.split('\n').map(s => s.trim()).filter(Boolean).slice(0, 3);
+    const icons = [{ sym: '↑', color: '#1D9E75' }, { sym: '↓', color: '#E24B4A' }, { sym: '→', color: '#BA7517' }];
+    if (lines.length) {
+      summaryEl.innerHTML = lines.map((line, i) => {
+        const icon = icons[i] || icons[icons.length - 1];
+        const marginBottom = i < lines.length - 1 ? '5px' : '0';
+        return `<div style="margin-bottom:${marginBottom};display:flex;gap:7px"><span style="color:${icon.color};font-weight:500">${icon.sym}</span>${escapeHtml(line)}</div>`;
+      }).join('');
+    }
+  }
+}
+
+// AI 인사이트(Top3, 대시보드 분석 요약)는 LLM 호출이라 차트 로딩보다 느릴 수 있어
+// loadDashboardData()의 Promise.all과는 별도로, 실패해도 기존 문구를 그대로 둔 채 진행한다.
+async function loadAiSummary() {
+  const requestId = ++aiSummaryRequestId;
+  const filters = getActiveFilters();
+  try {
+    const data = await fetchJson('/api/dashboard/ai-summary', filters);
+    if (requestId !== aiSummaryRequestId) return;
+    renderAiSummary(data);
+  } catch (err) {
+    if (requestId !== aiSummaryRequestId) return;
+    console.error('AI 요약 로드 실패 — 기존 문구 유지', err);
+  }
+}
+
 let dashboardRequestId = 0;
 
 async function loadDashboardData() {
   const requestId = ++dashboardRequestId;
   const filters = getActiveFilters();
+  loadAiSummary(); // 차트 로딩과 별도로 병렬 진행 — 느려도 차트 렌더링을 막지 않음
 
   try {
     const [kpi, salesType, region, dept, newBuyers] = await Promise.all([
