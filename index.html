@@ -1695,6 +1695,32 @@ document.getElementById('panel-buyers').__refresh = () => {
   async function ensurePptLibs(){
     if(!window.PptxGenJS) await loadScript('https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js');
   }
+  async function ensurePdfLib(){
+    if(!window.html2pdf) await loadScript('https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js');
+  }
+  function downloadBlob(blob, filename){
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+  async function storeReportDownload(blob, fileName, reportType, tabNameStr){
+    const f = getCurrentFilters();
+    const fd = new FormData();
+    fd.append('file', blob, fileName);
+    fd.append('reportType', reportType);
+    fd.append('tabName', tabNameStr);
+    fd.append('companyName', f.company || '');
+    fd.append('periodLabel', f.period || '');
+    fd.append('filtersSnapshot', JSON.stringify(f));
+    try{
+      await fetch(`${API_BASE}/api/dashboard/partner-report-downloads/file?company=${encodeURIComponent(f.company || '')}`, { method: 'POST', body: fd });
+      if(document.getElementById('panel-partner')?.classList.contains('active') && window.loadReportDownloads) window.loadReportDownloads();
+    }catch(err){
+      console.error('리포트 다운로드 이력 저장 실패', err);
+    }
+  }
   function stamp(){
     const d = new Date(), p = n => String(n).padStart(2,'0');
     return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}`;
@@ -2053,10 +2079,35 @@ document.getElementById('panel-buyers').__refresh = () => {
       if(!build){ alert('현재 화면은 PPT로 저장할 수 없습니다.'); return; }
       build(pptx);
 
-      await pptx.writeFile({fileName:`블루팜코리아_${tabName()}_${stamp()}.pptx`});
+      const fileName = `블루팜코리아_${tabName()}_${stamp()}.pptx`;
+      const blob = await pptx.write({outputType:'blob'});
+      downloadBlob(blob, fileName);
+      await storeReportDownload(blob, fileName, 'PPT', tabName());
     }catch(err){
       console.error(err);
       alert('PPT 생성에 실패했습니다.');
+    }
+  }
+
+  async function exportPdf(panel){
+    if(!panel) return;
+    try{
+      await ensurePdfLib();
+      const target = panel.querySelector('.wrap') || panel;
+      const fileName = `블루팜코리아_${tabName()}_${stamp()}.pdf`;
+      const opt = {
+        margin: 6,
+        filename: fileName,
+        image: { type: 'jpeg', quality: 0.95 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      };
+      const blob = await window.html2pdf().set(opt).from(target).outputPdf('blob');
+      downloadBlob(blob, fileName);
+      await storeReportDownload(blob, fileName, 'PDF', tabName());
+    }catch(err){
+      console.error(err);
+      alert('PDF 생성에 실패했습니다.');
     }
   }
 
@@ -2081,8 +2132,7 @@ document.getElementById('panel-buyers').__refresh = () => {
       opt.closest('.exp-menu').classList.add('hide');
       const fmt = opt.getAttribute('data-fmt');
       const panel = activePanel();
-      if(window.logReportDownload) window.logReportDownload(fmt === 'pdf' ? 'PDF' : 'PPT', panel ? panel.id : '');
-      if(fmt === 'pdf') window.print();
+      if(fmt === 'pdf') exportPdf(panel);
       else exportPptx(panel);
       return;
     }
@@ -2556,11 +2606,19 @@ function renderReportDownloads(rows) {
   el.innerHTML = `<div class="card">` + rows.map((r, i) => {
     const dt = new Date(r.downloaded_at);
     const dateStr = isNaN(dt) ? r.downloaded_at : `${dt.getFullYear()}.${String(dt.getMonth() + 1).padStart(2, '0')}.${String(dt.getDate()).padStart(2, '0')} ${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
+    const f = r.filters_snapshot || {};
+    const filterBits = [r.period_label || f.period, r.company_name || f.company, f.product, f.region, f.dept, f.channel]
+      .filter(v => v && v !== '전체 제품' && v !== '전체 지역' && v !== '전체 진료과')
+      .join(' · ');
     return `
     <div style="display:flex;gap:11px;align-items:center;padding:${i === 0 ? '0 0 10px' : '10px 0'};${i < rows.length - 1 ? 'border-bottom:1px solid var(--color-border-tertiary)' : ''}">
       <i class="ti ${r.report_type === 'PDF' ? 'ti-file-type-pdf' : 'ti-file-type-ppt'}" aria-hidden="true" style="font-size:19px;color:#0C447C"></i>
-      <div style="flex:1;font-size:15px">${escapeHtml(r.report_type)}${r.tab_name ? ` · ${escapeHtml(r.tab_name)}` : ''}</div>
-      <div style="font-size:13px;color:var(--color-text-secondary)">${dateStr}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:15px">${escapeHtml(r.report_type)}${r.tab_name ? ` · ${escapeHtml(r.tab_name)}` : ''}</div>
+        ${filterBits ? `<div style="font-size:12px;color:var(--color-text-secondary);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(filterBits)}</div>` : ''}
+      </div>
+      <div style="font-size:13px;color:var(--color-text-secondary);flex-shrink:0">${dateStr}</div>
+      ${r.file_url ? `<a href="${r.file_url}" download="${escapeHtml(r.file_name || '')}" target="_blank" rel="noopener" style="flex-shrink:0;display:flex;align-items:center;gap:5px;padding:5px 11px;background:#1B4F8A;color:#fff;border-radius:6px;font-size:13px;text-decoration:none;white-space:nowrap"><i class="ti ti-download" aria-hidden="true" style="font-size:14px"></i>다시 다운로드</a>` : ''}
     </div>`;
   }).join('') + `</div>`;
 }
@@ -2585,18 +2643,6 @@ async function loadReportDownloads() {
     if (el) el.innerHTML = '<div style="padding:20px;color:var(--color-text-secondary)">불러오지 못했습니다.</div>';
   }
 }
-
-window.logReportDownload = function (reportType, panelId) {
-  const filters = getActiveFilters();
-  if (!filters.company) return;
-  const tabName = Object.keys(TAB_MAP).find(k => TAB_MAP[k] === panelId) || panelId;
-  fetch(`${API_BASE}/api/dashboard/partner-report-downloads?company=${encodeURIComponent(filters.company)}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ reportType, tabName }),
-  }).then(() => { if (document.getElementById('panel-partner').classList.contains('active')) loadReportDownloads(); })
-    .catch(err => console.error('리포트 다운로드 이력 기록 실패', err));
-};
 
 document.getElementById('panel-partner').__refresh = () => { syncPhCompanyFromFilter(); loadPartnerHistory(); loadReportDownloads(); };
 syncPhCompanyFromFilter();
