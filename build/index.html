@@ -121,7 +121,8 @@ body[data-tab="panel-partner"] #commonFilter{display:none}
   .ptab.on{background:#185FA5;color:#fff;border-color:#185FA5}
   .srow{display:flex;align-items:center;gap:7px;margin-bottom:5px}
   .swrap{flex:1;background:var(--color-background-secondary);border-radius:4px;height:23px;overflow:hidden}
-  .sbar{height:100%;border-radius:4px;display:flex;align-items:center;padding:0 6px;font-size:13px;font-weight:500;color:#fff}
+  .sbar{height:100%;border-radius:4px}
+  .sval{font-size:13px;font-weight:500;width:98px;flex-shrink:0;white-space:nowrap}
   .fstep{display:flex;align-items:center;gap:11px;margin-bottom:3px}
   .flabel{font-size:16px;color:var(--color-text-secondary);width:77px;text-align:right;flex-shrink:0}
   .fbwrap{flex:1;background:var(--color-background-secondary);border-radius:4px;height:31px;overflow:hidden}
@@ -1413,9 +1414,12 @@ async function loadBuyerData(){
 function drawRfm() {
   const rows = document.getElementById('rfmRows');
   rows.innerHTML = rfmData.map(r => {
-    const barStyle = `width:${r.width}%;background:${r.barColor}${r.barTextColor?`;color:${r.barTextColor}`:''}`;
+    const barStyle = `width:${r.width}%;background:${r.barColor}`;
     const trendStyle = `font-size:14px;color:${r.trendColor};${r.trendBold?'font-weight:500;':''}margin-left:4px`;
-    return `<div class="srow"><span style="font-size:14px;font-weight:500;color:${r.textColor};width:68px">${r.seg}</span><div class="swrap"><div class="sbar" style="${barStyle}">${r.count}명 (${r.pct}%)</div></div><span style="${trendStyle}">${r.trend}</span></div>`;
+    // 막대 폭이 좁은 세그먼트(관심 2%, 단발 6% 등)는 막대 안에 흰 글자를 넣으면
+    // 막대 밖 연한 배경 위로 글자가 넘쳐서 안 보이므로, 수치는 막대 밖 고정폭
+    // 영역에 항상 잘 보이는 색으로 표시한다.
+    return `<div class="srow"><span style="font-size:14px;font-weight:500;color:${r.textColor};width:68px">${r.seg}</span><div class="swrap"><div class="sbar" style="${barStyle}"></div></div><span class="sval" style="color:${r.textColor}">${r.count}명 (${r.pct}%)</span><span style="${trendStyle}">${r.trend}</span></div>`;
   }).join('');
   const churn = rfmData.find(r => r.seg==='이탈위험');
   if (!churn) { document.getElementById('rfmAlertText').textContent = ''; return; }
@@ -1749,14 +1753,16 @@ document.getElementById('panel-buyers').__refresh = () => {
     });
 
     slide = slideChrome(pptx, 'RFM 세그먼트', subtitle);
-    const y0=1.3, rh=0.72, gap=0.14, barX=2.1, barMaxW=8.3;
+    // 막대 폭이 좁은 세그먼트는 막대 안에 글자를 넣으면 안 보이므로, 수치는
+    // 막대 밖 고정 위치에 항상 잘 보이는 색(textColor)으로 표시한다.
+    const y0=1.3, rh=0.72, gap=0.14, barX=2.1, barMaxW=7.0, valX=barX+barMaxW+0.15, valW=1.3, trendX=valX+valW+0.15;
     rfmData.forEach((r,i)=>{
       const y=y0+i*(rh+gap);
       slide.addText(r.seg, { x:0.4,y,w:1.6,h:rh, fontSize:12, bold:true, color:r.textColor, fontFace:FONT, valign:'middle' });
-      const w = Math.max(barMaxW*(r.width/100), 0.6);
+      const w = Math.max(barMaxW*(r.width/100), 0.1);
       slide.addShape('roundRect', { x:barX,y:y+0.1,w,h:rh-0.2, fill:{color:r.barColor}, line:{type:'none'} });
-      slide.addText(`${r.count}명 (${r.pct}%)`, { x:barX+0.15,y:y+0.1,w:w-0.3,h:rh-0.2, fontSize:11, bold:true, color:r.barTextColor||'FFFFFF', fontFace:FONT, valign:'middle' });
-      slide.addText(r.trend, { x:barX+barMaxW+0.15,y,w:1,h:rh, fontSize:11, bold:!!r.trendBold, color:r.trendColor, fontFace:FONT, valign:'middle' });
+      slide.addText(`${r.count}명 (${r.pct}%)`, { x:valX,y,w:valW,h:rh, fontSize:11, bold:true, color:r.textColor, fontFace:FONT, valign:'middle' });
+      slide.addText(r.trend, { x:trendX,y,w:1,h:rh, fontSize:11, bold:!!r.trendBold, color:r.trendColor, fontFace:FONT, valign:'middle' });
     });
     const churn = rfmData.find(r=>r.seg==='이탈위험');
     const alertY = y0+rfmData.length*(rh+gap)+0.1;
