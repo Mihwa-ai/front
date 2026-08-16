@@ -2101,7 +2101,7 @@ document.getElementById('panel-buyers').__refresh = () => {
         margin: 6,
         filename: fileName,
         image: { type: 'jpeg', quality: 0.95 },
-        html2canvas: { scale: 2, useCORS: true, windowWidth: 1600 },
+        html2canvas: { scale: 2, useCORS: true, scrollX: 0, scrollY: 0 },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
         pagebreak: { mode: ['css', 'legacy'], avoid: ['.card', '.kc', '.chart-card', '.ins-card'] },
       };
