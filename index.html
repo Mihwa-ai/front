@@ -676,24 +676,100 @@ body[data-tab="panel-partner"] #commonFilter{display:none}
 
 <!-- ════════════════ 캠페인 성과 (준비 중) ════════════════ -->
 <section id="panel-campaign" class="tabpanel">
-  <div class="stub-wrap">
-    <div class="stub-body">
-      <i class="ti ti-speakerphone" aria-hidden="true"></i>
-      <div class="t">캠페인 성과</div>
-      <div class="d">준비 중입니다.</div>
+<h2 class="sr-only">블루팜코리아 캠페인 성과 분석</h2>
+<div class="wrap">
+  <div class="body">
+
+    <div class="sdiv"><i class="ti ti-speakerphone" aria-hidden="true" style="font-size:20px"></i>캠페인 등록</div>
+    <div class="card">
+      <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr 1fr;gap:11px;align-items:end">
+        <div>
+          <label style="font-size:13px;color:var(--color-text-secondary);display:block;margin-bottom:3px">캠페인명</label>
+          <input type="text" id="cmpName" placeholder="예) 8월 재구매 유도 프로모션" style="width:100%;padding:8px 10px;border:1px solid var(--color-border-secondary);border-radius:6px;font-size:14px;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="font-size:13px;color:var(--color-text-secondary);display:block;margin-bottom:3px">유형</label>
+          <select id="cmpType" style="width:100%;padding:8px 10px;border:1px solid var(--color-border-secondary);border-radius:6px;font-size:14px">
+            <option>즉시할인</option><option>쿠폰</option><option>포인트</option><option>번들</option><option>기타</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:13px;color:var(--color-text-secondary);display:block;margin-bottom:3px">시작일</label>
+          <input type="date" id="cmpStart" style="width:100%;padding:7px 10px;border:1px solid var(--color-border-secondary);border-radius:6px;font-size:14px;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="font-size:13px;color:var(--color-text-secondary);display:block;margin-bottom:3px">종료일</label>
+          <input type="date" id="cmpEnd" style="width:100%;padding:7px 10px;border:1px solid var(--color-border-secondary);border-radius:6px;font-size:14px;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="font-size:13px;color:var(--color-text-secondary);display:block;margin-bottom:3px">예산(원)</label>
+          <input type="number" id="cmpBudget" placeholder="0" min="0" style="width:100%;padding:8px 10px;border:1px solid var(--color-border-secondary);border-radius:6px;font-size:14px;box-sizing:border-box">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:11px;align-items:end;margin-top:11px">
+        <div>
+          <label style="font-size:13px;color:var(--color-text-secondary);display:block;margin-bottom:3px">타겟 제품 (선택)</label>
+          <select id="cmpProduct" style="width:100%;padding:8px 10px;border:1px solid var(--color-border-secondary);border-radius:6px;font-size:14px"><option value="">전체 제품</option></select>
+        </div>
+        <div>
+          <label style="font-size:13px;color:var(--color-text-secondary);display:block;margin-bottom:3px">타겟 세그먼트 (선택)</label>
+          <select id="cmpSegment" style="width:100%;padding:8px 10px;border:1px solid var(--color-border-secondary);border-radius:6px;font-size:14px">
+            <option value="">전체</option><option>충성</option><option>일반</option><option>단발</option><option>관심</option><option>이탈위험</option>
+          </select>
+        </div>
+        <button onclick="submitCampaign()" style="padding:9px 20px;background:#1B4F8A;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;white-space:nowrap">캠페인 등록</button>
+      </div>
+      <div id="cmpFormMsg" style="font-size:13px;color:#A32D2D;margin-top:7px"></div>
     </div>
+
+    <div class="sdiv"><i class="ti ti-chart-bar" aria-hidden="true" style="font-size:20px"></i>캠페인 성과</div>
+    <div id="campaignList"><div style="padding:20px;color:var(--color-text-secondary)">회사를 선택해주세요.</div></div>
+
   </div>
+</div>
 </section>
 
-<!-- ════════════════ 파트너 히스토리 (준비 중) ════════════════ -->
+<!-- ════════════════ 파트너 히스토리 ════════════════ -->
 <section id="panel-partner" class="tabpanel">
-  <div class="stub-wrap">
-    <div class="stub-body">
-      <i class="ti ti-history" aria-hidden="true"></i>
-      <div class="t">파트너 히스토리</div>
-      <div class="d">준비 중입니다.</div>
+<h2 class="sr-only">블루팜코리아 파트너 히스토리</h2>
+<div class="wrap">
+  <div class="body">
+
+    <div style="display:flex;align-items:center;gap:10px;padding:14px 0 4px">
+      <label style="font-size:14px;color:var(--color-text-secondary)">제약사</label>
+      <select id="phCompany" style="padding:7px 10px;border:1px solid var(--color-border-secondary);border-radius:6px;font-size:14px;min-width:180px"></select>
     </div>
+
+    <div class="sdiv"><i class="ti ti-timeline-event" aria-hidden="true" style="font-size:20px"></i>히스토리 기록 추가</div>
+    <div class="card">
+      <div style="display:grid;grid-template-columns:auto auto 1fr auto;gap:11px;align-items:end">
+        <div>
+          <label style="font-size:13px;color:var(--color-text-secondary);display:block;margin-bottom:3px">날짜</label>
+          <input type="date" id="phDate" style="padding:7px 10px;border:1px solid var(--color-border-secondary);border-radius:6px;font-size:14px">
+        </div>
+        <div>
+          <label style="font-size:13px;color:var(--color-text-secondary);display:block;margin-bottom:3px">구분</label>
+          <select id="phType" style="padding:8px 10px;border:1px solid var(--color-border-secondary);border-radius:6px;font-size:14px">
+            <option>계약</option><option>프로모션</option><option selected>메모</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:13px;color:var(--color-text-secondary);display:block;margin-bottom:3px">내용</label>
+          <input type="text" id="phContent" placeholder="예) 계약 갱신 협의 완료, 3분기 프로모션 시작 등" style="width:100%;padding:8px 10px;border:1px solid var(--color-border-secondary);border-radius:6px;font-size:14px;box-sizing:border-box">
+        </div>
+        <button onclick="submitPartnerHistory()" style="padding:9px 20px;background:#1B4F8A;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;white-space:nowrap">기록 추가</button>
+      </div>
+      <div id="phFormMsg" style="font-size:13px;color:#A32D2D;margin-top:7px"></div>
+    </div>
+
+    <div class="sdiv"><i class="ti ti-history" aria-hidden="true" style="font-size:20px"></i>히스토리 타임라인</div>
+    <div id="partnerTimeline"><div style="padding:20px;color:var(--color-text-secondary)">불러오는 중…</div></div>
+
+    <div class="sdiv"><i class="ti ti-download" aria-hidden="true" style="font-size:20px"></i>리포트 다운로드 이력</div>
+    <div id="reportDownloadList"><div style="padding:20px;color:var(--color-text-secondary)">불러오는 중…</div></div>
+
   </div>
+</div>
 </section>
 
 </div><!-- /.app -->
@@ -1967,8 +2043,11 @@ document.getElementById('panel-buyers').__refresh = () => {
     const opt = e.target.closest('.exp-opt');
     if(opt){
       opt.closest('.exp-menu').classList.add('hide');
-      if(opt.getAttribute('data-fmt') === 'pdf') window.print();
-      else exportPptx(activePanel());
+      const fmt = opt.getAttribute('data-fmt');
+      const panel = activePanel();
+      if(window.logReportDownload) window.logReportDownload(fmt === 'pdf' ? 'PDF' : 'PPT', panel ? panel.id : '');
+      if(fmt === 'pdf') window.print();
+      else exportPptx(panel);
       return;
     }
     document.querySelectorAll('.exp-menu').forEach(m => m.classList.add('hide'));
@@ -2076,6 +2155,255 @@ async function loadAiInsightTab() {
 
 document.getElementById('panel-ai').__refresh = () => loadAiInsightTab();
 loadAiInsightTab();
+</script>
+
+<!-- ════════════════ 캠페인 성과 탭 스크립트 ════════════════ -->
+<script>
+async function loadCampaignProductOptions(company) {
+  const sel = document.getElementById('cmpProduct');
+  if (!sel) return;
+  if (!company) { sel.innerHTML = '<option value="">전체 제품</option>'; return; }
+  try {
+    const res = await fetch(`${API_BASE}/api/dashboard/companies/${encodeURIComponent(company)}/products`);
+    if (!res.ok) throw new Error(`products fetch failed: ${res.status}`);
+    const list = await res.json();
+    sel.innerHTML = '<option value="">전체 제품</option>' + list.map(p => `<option value="${p.code}">${p.name}</option>`).join('');
+  } catch (err) {
+    console.error('캠페인 타겟 제품 목록 로드 실패', err);
+    sel.innerHTML = '<option value="">전체 제품</option>';
+  }
+}
+
+function renderCampaignCard(c) {
+  const upliftSign = c.upliftEok >= 0 ? '+' : '';
+  const upliftColor = c.upliftEok >= 0 ? '#1D9E75' : '#E24B4A';
+  const roiText = c.roiPct != null ? `${c.roiPct >= 0 ? '+' : ''}${c.roiPct}%` : '예산 미입력';
+  const repurchaseText = c.repurchaseRatePct != null ? `${c.repurchaseRatePct}%` : '데이터 없음';
+  return `
+    <div class="card" style="margin-bottom:11px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;flex-wrap:wrap;gap:6px">
+        <div>
+          <span style="font-size:16px;font-weight:600">${escapeHtml(c.campaign_name)}</span>
+          <span style="font-size:13px;color:var(--color-text-secondary);margin-left:8px">${escapeHtml(c.campaign_type || '유형 미지정')} · ${c.start_date} ~ ${c.end_date}</span>
+        </div>
+        <span style="font-size:13px;color:var(--color-text-secondary)">예산 ${c.budgetEok}억</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:11px">
+        <div class="kc"><div class="kl">매출 Uplift</div><div class="kv" style="font-size:19px;color:${upliftColor}">${upliftSign}${c.upliftEok}억</div></div>
+        <div class="kc"><div class="kl">ROI</div><div class="kv" style="font-size:19px">${roiText}</div></div>
+        <div class="kc"><div class="kl">신규 구매처</div><div class="kv" style="font-size:19px">${c.newBuyerCount}곳</div></div>
+        <div class="kc"><div class="kl">재구매율</div><div class="kv" style="font-size:19px">${repurchaseText}</div></div>
+        <div class="kc"><div class="kl">구매처수(전→후)</div><div class="kv" style="font-size:16px">${c.priorBuyerCount}→${c.currBuyerCount}</div></div>
+      </div>
+    </div>`;
+}
+
+let campaignRequestId = 0;
+async function loadCampaigns() {
+  const requestId = ++campaignRequestId;
+  const filters = getActiveFilters();
+  const listEl = document.getElementById('campaignList');
+  loadCampaignProductOptions(filters.company);
+  if (!filters.company) {
+    if (listEl) listEl.innerHTML = '<div style="padding:20px;color:var(--color-text-secondary)">상단 필터에서 회사를 선택해주세요.</div>';
+    return;
+  }
+  if (listEl) listEl.innerHTML = `<div style="padding:20px;display:flex;align-items:center;gap:7px;color:var(--color-text-secondary)"><i class="ti ti-loader-2 spin-loop" aria-hidden="true"></i> 불러오는 중…</div>`;
+  try {
+    const list = await fetchJson('/api/dashboard/campaigns', filters);
+    if (requestId !== campaignRequestId) return;
+    if (!listEl) return;
+    if (!list.length) { listEl.innerHTML = '<div style="padding:20px;color:var(--color-text-secondary)">등록된 캠페인이 없습니다.</div>'; return; }
+    listEl.innerHTML = list.map(renderCampaignCard).join('');
+  } catch (err) {
+    if (requestId !== campaignRequestId) return;
+    console.error('캠페인 목록 로드 실패', err);
+    if (listEl) listEl.innerHTML = '<div style="padding:20px;color:var(--color-text-secondary)">불러오지 못했습니다.</div>';
+  }
+}
+
+async function submitCampaign() {
+  const filters = getActiveFilters();
+  const msgEl = document.getElementById('cmpFormMsg');
+  if (!filters.company) { if (msgEl) msgEl.textContent = '상단 필터에서 회사를 먼저 선택해주세요.'; return; }
+  const name = document.getElementById('cmpName').value.trim();
+  const startDate = document.getElementById('cmpStart').value;
+  const endDate = document.getElementById('cmpEnd').value;
+  if (!name) { if (msgEl) msgEl.textContent = '캠페인명을 입력해주세요.'; return; }
+  if (!startDate || !endDate) { if (msgEl) msgEl.textContent = '캠페인 기간을 입력해주세요.'; return; }
+  if (endDate < startDate) { if (msgEl) msgEl.textContent = '종료일이 시작일보다 빠를 수 없습니다.'; return; }
+
+  const payload = {
+    campaignName: name,
+    campaignType: document.getElementById('cmpType').value,
+    startDate, endDate,
+    targetProductCode: document.getElementById('cmpProduct').value || null,
+    budget: Number(document.getElementById('cmpBudget').value) || 0,
+    targetSegment: document.getElementById('cmpSegment').value || null,
+  };
+
+  if (msgEl) msgEl.textContent = '등록 중…';
+  try {
+    const res = await fetch(`${API_BASE}/api/dashboard/campaigns?company=${encodeURIComponent(filters.company)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error || `요청 실패 (${res.status})`); }
+    if (msgEl) msgEl.textContent = '';
+    document.getElementById('cmpName').value = '';
+    document.getElementById('cmpStart').value = '';
+    document.getElementById('cmpEnd').value = '';
+    document.getElementById('cmpBudget').value = '';
+    loadCampaigns();
+  } catch (err) {
+    console.error('캠페인 등록 실패', err);
+    if (msgEl) msgEl.textContent = '등록에 실패했습니다: ' + err.message;
+  }
+}
+
+document.getElementById('panel-campaign').__refresh = () => loadCampaigns();
+</script>
+
+<!-- ════════════════ 파트너 히스토리 탭 스크립트 ════════════════ -->
+<script>
+const ENTRY_TYPE_COLOR = { '계약': '#1B4F8A', '프로모션': '#BA7517', '메모': '#5C6672' };
+
+function syncPhCompanyFromFilter() {
+  const sel = document.getElementById('phCompany');
+  const src = document.getElementById('fltCompany');
+  if (!sel || !src) return;
+  if (sel.innerHTML !== src.innerHTML) sel.innerHTML = src.innerHTML;
+  sel.value = src.value;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const phCompany = document.getElementById('phCompany');
+  const fltCompany = document.getElementById('fltCompany');
+  if (phCompany && fltCompany) {
+    phCompany.addEventListener('change', () => {
+      fltCompany.value = phCompany.value;
+      loadPartnerHistory();
+      loadReportDownloads();
+    });
+  }
+});
+
+function renderPartnerTimeline(entries) {
+  const el = document.getElementById('partnerTimeline');
+  if (!el) return;
+  if (!entries.length) { el.innerHTML = '<div style="padding:20px;color:var(--color-text-secondary)">등록된 기록이 없습니다.</div>'; return; }
+  el.innerHTML = `<div class="card">` + entries.map((e, i) => `
+    <div style="display:flex;gap:11px;padding:${i === 0 ? '0 0 12px' : '12px 0'};${i < entries.length - 1 ? 'border-bottom:1px solid var(--color-border-tertiary)' : ''}">
+      <div style="flex-shrink:0;width:78px;font-size:13px;color:var(--color-text-secondary);padding-top:2px">${e.entry_date}</div>
+      <div style="flex-shrink:0">
+        <span style="display:inline-block;padding:2px 9px;border-radius:11px;font-size:12px;font-weight:600;color:#fff;background:${ENTRY_TYPE_COLOR[e.entry_type] || '#5C6672'}">${escapeHtml(e.entry_type)}</span>
+      </div>
+      <div style="flex:1;font-size:15px;line-height:1.5">${escapeHtml(e.content)}</div>
+    </div>`).join('') + `</div>`;
+}
+
+let partnerHistoryRequestId = 0;
+async function loadPartnerHistory() {
+  const requestId = ++partnerHistoryRequestId;
+  const filters = getActiveFilters();
+  const el = document.getElementById('partnerTimeline');
+  if (!filters.company) {
+    if (el) el.innerHTML = '<div style="padding:20px;color:var(--color-text-secondary)">제약사를 선택해주세요.</div>';
+    return;
+  }
+  if (el) el.innerHTML = `<div style="padding:20px;display:flex;align-items:center;gap:7px;color:var(--color-text-secondary)"><i class="ti ti-loader-2 spin-loop" aria-hidden="true"></i> 불러오는 중…</div>`;
+  try {
+    const entries = await fetchJson('/api/dashboard/partner-history', { company: filters.company });
+    if (requestId !== partnerHistoryRequestId) return;
+    renderPartnerTimeline(entries);
+  } catch (err) {
+    if (requestId !== partnerHistoryRequestId) return;
+    console.error('파트너 히스토리 로드 실패', err);
+    if (el) el.innerHTML = '<div style="padding:20px;color:var(--color-text-secondary)">불러오지 못했습니다.</div>';
+  }
+}
+
+async function submitPartnerHistory() {
+  const filters = getActiveFilters();
+  const msgEl = document.getElementById('phFormMsg');
+  if (!filters.company) { if (msgEl) msgEl.textContent = '제약사를 먼저 선택해주세요.'; return; }
+  const entryDate = document.getElementById('phDate').value;
+  const content = document.getElementById('phContent').value.trim();
+  if (!entryDate) { if (msgEl) msgEl.textContent = '날짜를 입력해주세요.'; return; }
+  if (!content) { if (msgEl) msgEl.textContent = '내용을 입력해주세요.'; return; }
+
+  const payload = { entryDate, entryType: document.getElementById('phType').value, content };
+  if (msgEl) msgEl.textContent = '등록 중…';
+  try {
+    const res = await fetch(`${API_BASE}/api/dashboard/partner-history?company=${encodeURIComponent(filters.company)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error || `요청 실패 (${res.status})`); }
+    if (msgEl) msgEl.textContent = '';
+    document.getElementById('phContent').value = '';
+    loadPartnerHistory();
+  } catch (err) {
+    console.error('파트너 히스토리 등록 실패', err);
+    if (msgEl) msgEl.textContent = '등록에 실패했습니다: ' + err.message;
+  }
+}
+
+function renderReportDownloads(rows) {
+  const el = document.getElementById('reportDownloadList');
+  if (!el) return;
+  if (!rows.length) { el.innerHTML = '<div style="padding:20px;color:var(--color-text-secondary)">다운로드 기록이 없습니다.</div>'; return; }
+  el.innerHTML = `<div class="card">` + rows.map((r, i) => {
+    const dt = new Date(r.downloaded_at);
+    const dateStr = isNaN(dt) ? r.downloaded_at : `${dt.getFullYear()}.${String(dt.getMonth() + 1).padStart(2, '0')}.${String(dt.getDate()).padStart(2, '0')} ${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
+    return `
+    <div style="display:flex;gap:11px;align-items:center;padding:${i === 0 ? '0 0 10px' : '10px 0'};${i < rows.length - 1 ? 'border-bottom:1px solid var(--color-border-tertiary)' : ''}">
+      <i class="ti ${r.report_type === 'PDF' ? 'ti-file-type-pdf' : 'ti-file-type-ppt'}" aria-hidden="true" style="font-size:19px;color:#0C447C"></i>
+      <div style="flex:1;font-size:15px">${escapeHtml(r.report_type)}${r.tab_name ? ` · ${escapeHtml(r.tab_name)}` : ''}</div>
+      <div style="font-size:13px;color:var(--color-text-secondary)">${dateStr}</div>
+    </div>`;
+  }).join('') + `</div>`;
+}
+
+let reportDownloadRequestId = 0;
+async function loadReportDownloads() {
+  const requestId = ++reportDownloadRequestId;
+  const filters = getActiveFilters();
+  const el = document.getElementById('reportDownloadList');
+  if (!filters.company) {
+    if (el) el.innerHTML = '<div style="padding:20px;color:var(--color-text-secondary)">제약사를 선택해주세요.</div>';
+    return;
+  }
+  if (el) el.innerHTML = `<div style="padding:20px;display:flex;align-items:center;gap:7px;color:var(--color-text-secondary)"><i class="ti ti-loader-2 spin-loop" aria-hidden="true"></i> 불러오는 중…</div>`;
+  try {
+    const rows = await fetchJson('/api/dashboard/partner-report-downloads', { company: filters.company });
+    if (requestId !== reportDownloadRequestId) return;
+    renderReportDownloads(rows);
+  } catch (err) {
+    if (requestId !== reportDownloadRequestId) return;
+    console.error('리포트 다운로드 이력 로드 실패', err);
+    if (el) el.innerHTML = '<div style="padding:20px;color:var(--color-text-secondary)">불러오지 못했습니다.</div>';
+  }
+}
+
+window.logReportDownload = function (reportType, panelId) {
+  const filters = getActiveFilters();
+  if (!filters.company) return;
+  const tabName = Object.keys(TAB_MAP).find(k => TAB_MAP[k] === panelId) || panelId;
+  fetch(`${API_BASE}/api/dashboard/partner-report-downloads?company=${encodeURIComponent(filters.company)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reportType, tabName }),
+  }).then(() => { if (document.getElementById('panel-partner').classList.contains('active')) loadReportDownloads(); })
+    .catch(err => console.error('리포트 다운로드 이력 기록 실패', err));
+};
+
+document.getElementById('panel-partner').__refresh = () => { syncPhCompanyFromFilter(); loadPartnerHistory(); loadReportDownloads(); };
+syncPhCompanyFromFilter();
+loadPartnerHistory();
+loadReportDownloads();
 </script>
 
 </body>
