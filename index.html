@@ -2094,12 +2094,17 @@ document.getElementById('panel-buyers').__refresh = () => {
     try{
       await ensurePdfLib();
       const target = panel.querySelector('.wrap') || panel;
+      // html2canvas가 이 대시보드의 CSS grid/카드 레이아웃을 auto-size로 측정하면
+      // 캔버스 가로/세로 비율이 실제 화면과 전혀 다르게 나온다(그리드가 다른 열 수로
+      // 재계산됨) — width/height/windowWidth/windowHeight를 실제 스크롤 크기로
+      // 명시해야 캡처가 정확해진다.
+      const w = target.scrollWidth, h = target.scrollHeight;
       const fileName = `블루팜코리아_${tabName()}_${stamp()}.pdf`;
       const opt = {
         margin: 6,
         filename: fileName,
         image: { type: 'jpeg', quality: 0.95 },
-        html2canvas: { scale: 2, useCORS: true, scrollX: 0, scrollY: 0 },
+        html2canvas: { scale: 2, useCORS: true, scrollX: 0, scrollY: 0, width: w, height: h, windowWidth: w, windowHeight: h },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
         pagebreak: { mode: ['css', 'legacy'], avoid: ['.card', '.kc', '.chart-card', '.ins-card'] },
       };
