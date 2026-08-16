@@ -2179,18 +2179,20 @@ loadAiInsightTab();
 
 <!-- ════════════════ 캠페인 성과 탭 스크립트 ════════════════ -->
 <script>
+let campaignProductNames = {};
 async function loadCampaignProductOptions(company) {
   const sel = document.getElementById('cmpProduct');
-  if (!sel) return;
-  if (!company) { sel.innerHTML = '<option value="">전체 제품</option>'; return; }
+  if (!company) { campaignProductNames = {}; if (sel) sel.innerHTML = '<option value="">전체 제품</option>'; return; }
   try {
     const res = await fetch(`${API_BASE}/api/dashboard/companies/${encodeURIComponent(company)}/products`);
     if (!res.ok) throw new Error(`products fetch failed: ${res.status}`);
     const list = await res.json();
-    sel.innerHTML = '<option value="">전체 제품</option>' + list.map(p => `<option value="${p.code}">${p.name}</option>`).join('');
+    campaignProductNames = Object.fromEntries(list.map(p => [p.code, p.name]));
+    if (sel) sel.innerHTML = '<option value="">전체 제품</option>' + list.map(p => `<option value="${p.code}">${p.name}</option>`).join('');
   } catch (err) {
     console.error('캠페인 타겟 제품 목록 로드 실패', err);
-    sel.innerHTML = '<option value="">전체 제품</option>';
+    campaignProductNames = {};
+    if (sel) sel.innerHTML = '<option value="">전체 제품</option>';
   }
 }
 
@@ -2201,15 +2203,18 @@ function renderCampaignCard(c) {
     ? '타겟 제품 필요'
     : (c.roiPct != null ? `${c.roiPct >= 0 ? '+' : ''}${c.roiPct}%` : '예산 미입력');
   const repurchaseText = c.repurchaseRatePct != null ? `${c.repurchaseRatePct}%` : '데이터 없음';
+  const productLabel = c.target_product_code ? (campaignProductNames[c.target_product_code] || c.target_product_code) : '전체 제품';
+  const segmentLabel = c.target_segment || '전체 세그먼트';
   return `
     <div class="card" style="margin-bottom:11px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;flex-wrap:wrap;gap:6px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;flex-wrap:wrap;gap:6px">
         <div>
           <span style="font-size:16px;font-weight:600">${escapeHtml(c.campaign_name)}</span>
-          <span style="font-size:13px;color:var(--color-text-secondary);margin-left:8px">${escapeHtml(c.campaign_type || '유형 미지정')} · ${c.start_date} ~ ${c.end_date}</span>
+          <span style="font-size:13px;color:var(--color-text-secondary);margin-left:8px">${escapeHtml(c.campaign_type || '유형 미지정')} · ${c.start_date} ~ ${c.end_date} · ${escapeHtml(productLabel)} · ${escapeHtml(segmentLabel)}</span>
         </div>
         <span style="font-size:13px;color:var(--color-text-secondary)">예산 ${c.budgetEok}억</span>
       </div>
+      <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:9px">직전 동일기간(${c.comparePeriodStart} ~ ${c.comparePeriodEnd}) 대비</div>
       <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:11px">
         <div class="kc"><div class="kl">매출 Uplift</div><div class="kv" style="font-size:19px;color:${upliftColor}">${upliftSign}${c.upliftEok}억</div></div>
         <div class="kc"><div class="kl">ROI</div><div class="kv" style="font-size:19px">${roiText}</div></div>
@@ -2225,7 +2230,7 @@ async function loadCampaigns() {
   const requestId = ++campaignRequestId;
   const filters = getActiveFilters();
   const listEl = document.getElementById('campaignList');
-  loadCampaignProductOptions(filters.company);
+  await loadCampaignProductOptions(filters.company);
   if (!filters.company) {
     if (listEl) listEl.innerHTML = '<div style="padding:20px;color:var(--color-text-secondary)">상단 필터에서 회사를 선택해주세요.</div>';
     return;
