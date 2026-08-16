@@ -724,7 +724,7 @@ body[data-tab="panel-partner"] #commonFilter{display:none}
           <input type="number" id="cmpBudget" placeholder="0" min="0" style="width:100%;padding:8px 10px;border:1px solid var(--color-border-secondary);border-radius:6px;font-size:14px;box-sizing:border-box">
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:11px;align-items:end;margin-top:11px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:11px;align-items:end;margin-top:11px">
         <div>
           <label style="font-size:13px;color:var(--color-text-secondary);display:block;margin-bottom:3px">타겟 제품 (선택)</label>
           <select id="cmpProduct" style="width:100%;padding:8px 10px;border:1px solid var(--color-border-secondary);border-radius:6px;font-size:14px"><option value="">전체 제품</option></select>
@@ -733,6 +733,12 @@ body[data-tab="panel-partner"] #commonFilter{display:none}
           <label style="font-size:13px;color:var(--color-text-secondary);display:block;margin-bottom:3px">타겟 세그먼트 (선택)</label>
           <select id="cmpSegment" style="width:100%;padding:8px 10px;border:1px solid var(--color-border-secondary);border-radius:6px;font-size:14px">
             <option value="">전체</option><option>충성</option><option>일반</option><option>단발</option><option>관심</option><option>이탈위험</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:13px;color:var(--color-text-secondary);display:block;margin-bottom:3px">타겟 진료과 (선택)</label>
+          <select id="cmpDept" style="width:100%;padding:8px 10px;border:1px solid var(--color-border-secondary);border-radius:6px;font-size:14px">
+            <option value="">전체</option><option>내과</option><option>소아과</option><option>가정의학과</option><option>이비인후과</option><option>외과</option><option>피부과</option>
           </select>
         </div>
         <button onclick="submitCampaign()" style="padding:9px 20px;background:#1B4F8A;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;white-space:nowrap">캠페인 등록</button>
@@ -2203,12 +2209,13 @@ function renderCampaignCard(c) {
   const repurchaseText = c.repurchaseRatePct != null ? `${c.repurchaseRatePct}%` : '데이터 없음';
   const productLabel = c.target_product_code ? (campaignProductNames[c.target_product_code] || c.target_product_code) : '전체 제품';
   const segmentLabel = c.target_segment || '전체 세그먼트';
+  const deptLabel = c.target_dept || '전체 진료과';
   return `
     <div class="card" style="margin-bottom:11px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;flex-wrap:wrap;gap:6px">
         <div>
           <span style="font-size:16px;font-weight:600">${escapeHtml(c.campaign_name)}</span>
-          <span style="font-size:13px;color:var(--color-text-secondary);margin-left:8px">${escapeHtml(c.campaign_type || '유형 미지정')} · ${c.start_date} ~ ${c.end_date} · ${escapeHtml(productLabel)} · ${escapeHtml(segmentLabel)}</span>
+          <span style="font-size:13px;color:var(--color-text-secondary);margin-left:8px">${escapeHtml(c.campaign_type || '유형 미지정')} · ${c.start_date} ~ ${c.end_date} · ${escapeHtml(productLabel)} · ${escapeHtml(segmentLabel)} · ${escapeHtml(deptLabel)}</span>
         </div>
         <div style="display:flex;align-items:center;gap:11px">
           <span style="font-size:13px;color:var(--color-text-secondary)">예산 ${c.budgetEok}억</span>
@@ -2268,6 +2275,7 @@ async function submitCampaign() {
     targetProductCode: document.getElementById('cmpProduct').value || null,
     budget: Number(document.getElementById('cmpBudget').value) || 0,
     targetSegment: document.getElementById('cmpSegment').value || null,
+    targetDept: document.getElementById('cmpDept').value || null,
   };
 
   if (msgEl) msgEl.textContent = '등록 중…';
