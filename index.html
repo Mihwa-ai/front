@@ -481,15 +481,15 @@ body[data-tab="panel-partner"] #commonFilter{display:none}
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:17px">
         <div>
           <div style="font-size:14px;font-weight:500;color:#A32D2D;margin-bottom:4px;display:flex;align-items:center;gap:6px"><i class="ti ti-alert-triangle" aria-hidden="true" style="font-size:17px"></i>이탈 리스크</div>
-          <div style="font-size:16px;line-height:1.5">경기·인천 이탈위험 <strong>144개처</strong> (+22). 예상 방어 매출 <strong>₩38M</strong> — 즉시 CRM 실행 권장.</div>
+          <div style="font-size:16px;line-height:1.5" id="buyerChurnBody">경기·인천 이탈위험 <strong>144개처</strong> (+22). 예상 방어 매출 <strong>₩38M</strong> — 즉시 CRM 실행 권장.</div>
         </div>
         <div>
           <div style="font-size:14px;font-weight:500;color:#854F0B;margin-bottom:4px;display:flex;align-items:center;gap:6px"><i class="ti ti-trending-down" aria-hidden="true" style="font-size:17px"></i>퍼널 병목</div>
-          <div style="font-size:16px;line-height:1.5">B백신 장바구니→결제 <strong>–7.3%p</strong> 급락 — 번들 프로모션 검토 필요.</div>
+          <div style="font-size:16px;line-height:1.5" id="buyerFunnelBody">B백신 장바구니→결제 <strong>–7.3%p</strong> 급락 — 번들 프로모션 검토 필요.</div>
         </div>
         <div>
           <div style="font-size:14px;font-weight:500;color:#1D9E75;margin-bottom:4px;display:flex;align-items:center;gap:6px"><i class="ti ti-bulb" aria-hidden="true" style="font-size:17px"></i>추천 실행과제</div>
-          <div style="font-size:16px;line-height:1.5">2차 미구매 <strong>132개처</strong> 리마인더 발송 → 전환율 +18% 예측.</div>
+          <div style="font-size:16px;line-height:1.5" id="buyerActionBody">2차 미구매 <strong>132개처</strong> 리마인더 발송 → 전환율 +18% 예측.</div>
         </div>
       </div>
     </div>
@@ -1334,12 +1334,56 @@ function applyBuyerSegmentData(segs){
   });
 }
 
+const BUYER_ANALYSIS_LOADING_HTML = '<i class="ti ti-loader-2 spin-loop" aria-hidden="true"></i> AI 분석 중…';
+
+function setBuyerAnalysisLoading() {
+  ['buyerChurnBody', 'buyerFunnelBody', 'buyerActionBody'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = BUYER_ANALYSIS_LOADING_HTML;
+  });
+}
+
+function setBuyerAnalysisError() {
+  ['buyerChurnBody', 'buyerFunnelBody', 'buyerActionBody'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = 'AI 요약을 불러오지 못했습니다.';
+  });
+}
+
+function renderBuyerAnalysisSummary(data) {
+  const cardMap = { churnRisk: 'buyerChurnBody', funnelBottleneck: 'buyerFunnelBody', actionRecommendation: 'buyerActionBody' };
+  Object.entries(cardMap).forEach(([key, id]) => {
+    const card = data[key];
+    const el = document.getElementById(id);
+    if (!el || !card) return;
+    el.textContent = card.body || (card.hasData ? '' : '데이터가 부족하여 분석할 수 없습니다.');
+  });
+}
+
+let buyerAnalysisRequestId = 0;
+
+async function loadBuyerAnalysisSummary() {
+  const requestId = ++buyerAnalysisRequestId;
+  const filters = getActiveFilters();
+  setBuyerAnalysisLoading();
+  try {
+    const data = await fetchJson('/api/dashboard/buyer-analysis-summary', filters);
+    if (requestId !== buyerAnalysisRequestId) return;
+    renderBuyerAnalysisSummary(data);
+  } catch (err) {
+    if (requestId !== buyerAnalysisRequestId) return;
+    console.error('구매처 분석 AI 요약 로드 실패', err);
+    setBuyerAnalysisError();
+  }
+}
+
 let buyerRequestId = 0;
 
 async function loadBuyerData(){
   const requestId = ++buyerRequestId;
   const filters = getActiveFilters();
   setPanelLoading('panel-buyers', true);
+  loadBuyerAnalysisSummary(); // 차트 로딩과 별도로 병렬 진행 — 느려도 차트 렌더링을 막지 않음
 
   try {
     const [trend, segs] = await Promise.all([
