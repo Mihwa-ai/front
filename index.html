@@ -360,7 +360,7 @@ body[data-tab="panel-partner"] #commonFilter{display:none}
 
   <div class="body">
 
-    <div class="sdiv"><i class="ti ti-sparkles" aria-hidden="true" style="font-size:20px"></i>C. 구매처 분석 AI 요약</div>
+    <div class="sdiv"><i class="ti ti-sparkles" aria-hidden="true" style="font-size:20px"></i>A. 구매처 분석 AI 요약</div>
     <div class="card" style="border-left:3px solid #378ADD;border-radius:0 var(--border-radius-md) var(--border-radius-md) 0">
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:17px">
         <div>
@@ -378,7 +378,7 @@ body[data-tab="panel-partner"] #commonFilter{display:none}
       </div>
     </div>
 
-    <div class="sdiv"><i class="ti ti-users" aria-hidden="true" style="font-size:20px"></i>A. 구매처 분석</div>
+    <div class="sdiv"><i class="ti ti-users" aria-hidden="true" style="font-size:20px"></i>B. 구매처 분석</div>
 
     <div class="card-grid" style="grid-template-columns:1.3fr 1fr">
       <div class="card">
@@ -446,7 +446,7 @@ body[data-tab="panel-partner"] #commonFilter{display:none}
     </div>
 
     <div class="sdiv">
-      <i class="ti ti-filter-cog" aria-hidden="true" style="font-size:20px"></i>B. 구매 퍼널 분석
+      <i class="ti ti-filter-cog" aria-hidden="true" style="font-size:20px"></i>C. 구매 퍼널 분석
       <span style="font-size:14px;font-weight:400;color:#888780">로그 설계 완료 후 데이터 연동 예정</span>
     </div>
 
@@ -1791,7 +1791,7 @@ document.getElementById('panel-buyers').__refresh = () => {
     slide.addText('구매 빈도: 옅은 색(미구매/낮음) → 진한 색(높음), 점선 테두리는 이탈 신호',
       { x:0.4,y:5.7,w:12.5,h:0.3, fontSize:9, color:PC.gray, fontFace:FONT });
 
-    slide = slideChrome(pptx, 'B. 구매 퍼널 분석 — A백신', subtitle);
+    slide = slideChrome(pptx, 'C. 구매 퍼널 분석 — A백신', subtitle);
     const fx0=0.4, fBarMaxW=4.6, fy0=1.2, frh=0.55, fgap=0.3;
     funnelData.forEach((f,i)=>{
       const y=fy0+i*(frh+fgap);
@@ -1837,7 +1837,7 @@ document.getElementById('panel-buyers').__refresh = () => {
       ], { x:0.4,y:3.9+i*0.4,w:6,h:0.35, fontSize:10, fontFace:FONT });
     });
 
-    slide.addText('C. 구매처 분석 AI 요약', { x:7,y:1.1,w:5.9,h:0.3, fontSize:11, bold:true, color:PC.navy, fontFace:FONT });
+    slide.addText('A. 구매처 분석 AI 요약', { x:7,y:1.1,w:5.9,h:0.3, fontSize:11, bold:true, color:PC.navy, fontFace:FONT });
     [
       { arrow:'↑', color:PC.green, text:'경기·인천 이탈위험 144개처 (+22). 예상 방어 매출 ₩38M — 즉시 CRM 실행 권장.' },
       { arrow:'↓', color:PC.amber, text:'B백신 장바구니→결제 –7.3%p 급락 — 번들 프로모션 검토 필요.' },
