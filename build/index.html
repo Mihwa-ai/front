@@ -391,7 +391,6 @@ body[data-tab="panel-partner"] #commonFilter{display:none}
       <div class="ct">
         <span><i class="ti ti-grid-dots" aria-hidden="true" style="margin-right:3px"></i>구매 패턴 히트맵 — 세그먼트별 월평균 구매 빈도 &amp; 평균 구매 주기</span>
         <div style="display:flex;align-items:center;gap:7px">
-          <span style="font-size:13px;color:#A32D2D;background:#FCEBEB;padding:3px 10px;border-radius:6px">구매주기 TBD — 판매데이터 확인 후 확정</span>
           <div style="display:flex;gap:3px" id="hmTabs">
             <div class="ptab on" onclick="swH(this,'6')">6개월</div>
             <div class="ptab" onclick="swH(this,'12')">12개월</div>
@@ -1336,7 +1335,7 @@ function applyBuyerSegmentData(segs){
   hCnt = Object.fromEntries(segs.segments.map(s => [s.seg, s.count]));
   hS = segs.heatmap12.rows.map(row => {
     const style = SEGMENT_STYLE[row.seg] || {};
-    return { lb: row.seg, co: style.heatCo, bg: style.heatBg, v12: row.values, v6: row.values.slice(-6) };
+    return { lb: row.seg, co: style.heatCo, bg: style.heatBg, v12: row.values, v6: row.values.slice(-6), avgCycleDays: row.avgCycleDays };
   });
 }
 
@@ -1519,8 +1518,13 @@ function drawHm(){
     });
     const cX=LC+CC2+n*CELL;
     h+=`<rect x="${cX+2}" y="${y+3}" width="${CYC-6}" height="${RH-6}" fill="${seg.bg}" rx="4"/>`;
-    h+=`<text x="${(cX+CYC/2).toFixed(1)}" y="${y+RH/2+1}" font-size="14" fill="${seg.co}" text-anchor="middle" font-weight="500">TBD</text>`;
-    h+=`<text x="${(cX+CYC/2).toFixed(1)}" y="${y+RH/2+11}" font-size="9" fill="${seg.co}" text-anchor="middle" opacity="0.7">확인 후 확정</text>`;
+    if (seg.avgCycleDays != null) {
+      h+=`<text x="${(cX+CYC/2).toFixed(1)}" y="${y+RH/2+1}" font-size="14" fill="${seg.co}" text-anchor="middle" font-weight="500">${seg.avgCycleDays}일</text>`;
+      h+=`<text x="${(cX+CYC/2).toFixed(1)}" y="${y+RH/2+11}" font-size="9" fill="${seg.co}" text-anchor="middle" opacity="0.7">평균 간격</text>`;
+    } else {
+      h+=`<text x="${(cX+CYC/2).toFixed(1)}" y="${y+RH/2+1}" font-size="13" fill="${seg.co}" text-anchor="middle" font-weight="500">–</text>`;
+      h+=`<text x="${(cX+CYC/2).toFixed(1)}" y="${y+RH/2+11}" font-size="9" fill="${seg.co}" text-anchor="middle" opacity="0.7">데이터 부족</text>`;
+    }
     h+=`<line x1="0" y1="${y+RH}" x2="${tW}" y2="${y+RH}" stroke="var(--color-border-tertiary)" stroke-width="0.5"/>`;
   });
   h+=`</svg>`;
