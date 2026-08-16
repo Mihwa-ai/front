@@ -786,8 +786,17 @@ body[data-tab="panel-partner"] #commonFilter{display:none}
       <div id="phFormMsg" style="font-size:13px;color:#A32D2D;margin-top:7px"></div>
     </div>
 
-    <div class="sdiv"><i class="ti ti-history" aria-hidden="true" style="font-size:20px"></i>히스토리 타임라인</div>
+    <div class="sdiv" style="justify-content:space-between">
+      <span style="display:flex;align-items:center;gap:9px"><i class="ti ti-history" aria-hidden="true" style="font-size:20px"></i>히스토리 타임라인</span>
+      <span style="display:flex;align-items:center;gap:6px;font-weight:400">
+        <input type="date" id="phRangeStart" style="padding:5px 8px;border:1px solid var(--color-border-secondary);border-radius:6px;font-size:13px">
+        <span style="color:var(--color-text-secondary)">~</span>
+        <input type="date" id="phRangeEnd" style="padding:5px 8px;border:1px solid var(--color-border-secondary);border-radius:6px;font-size:13px">
+        <button onclick="loadPartnerHistory()" style="padding:5px 12px;background:#1B4F8A;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer">조회</button>
+      </span>
+    </div>
     <div id="partnerTimeline"><div style="padding:20px;color:var(--color-text-secondary)">불러오는 중…</div></div>
+    <input type="file" id="phAttachInput" style="display:none" onchange="onPhAttachChange(event)">
 
     <div class="sdiv"><i class="ti ti-download" aria-hidden="true" style="font-size:20px"></i>리포트 다운로드 이력</div>
     <div id="reportDownloadList"><div style="padding:20px;color:var(--color-text-secondary)">불러오는 중…</div></div>
@@ -2343,18 +2352,65 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+let phLastEntries = [];
+let phEditingId = null;
+let phAttachTargetId = null;
+
 function renderPartnerTimeline(entries) {
+  phLastEntries = entries;
   const el = document.getElementById('partnerTimeline');
   if (!el) return;
   if (!entries.length) { el.innerHTML = '<div style="padding:20px;color:var(--color-text-secondary)">등록된 기록이 없습니다.</div>'; return; }
-  el.innerHTML = `<div class="card">` + entries.map((e, i) => `
-    <div style="display:flex;gap:11px;padding:${i === 0 ? '0 0 12px' : '12px 0'};${i < entries.length - 1 ? 'border-bottom:1px solid var(--color-border-tertiary)' : ''}">
-      <div style="flex-shrink:0;width:78px;font-size:13px;color:var(--color-text-secondary);padding-top:2px">${e.entry_date}</div>
-      <div style="flex-shrink:0">
-        <span style="display:inline-block;padding:2px 9px;border-radius:11px;font-size:12px;font-weight:600;color:#fff;background:${ENTRY_TYPE_COLOR[e.entry_type] || '#5C6672'}">${escapeHtml(e.entry_type)}</span>
-      </div>
-      <div style="flex:1;font-size:15px;line-height:1.5">${escapeHtml(e.content)}</div>
-    </div>`).join('') + `</div>`;
+  el.innerHTML = `<div class="card">` + entries.map((e, i) => {
+    const rowStyle = `padding:${i === 0 ? '0 0 12px' : '12px 0'};${i < entries.length - 1 ? 'border-bottom:1px solid var(--color-border-tertiary)' : ''}`;
+
+    if (phEditingId === e.id) {
+      return `
+        <div style="${rowStyle}">
+          <div style="display:grid;grid-template-columns:auto auto 1fr;gap:9px;align-items:end;margin-bottom:7px">
+            <div>
+              <label style="font-size:12px;color:var(--color-text-secondary);display:block;margin-bottom:2px">날짜</label>
+              <input type="date" id="phEditDate_${e.id}" value="${e.entry_date}" style="padding:6px 9px;border:1px solid var(--color-border-secondary);border-radius:6px;font-size:14px">
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--color-text-secondary);display:block;margin-bottom:2px">구분</label>
+              <select id="phEditType_${e.id}" style="padding:7px 9px;border:1px solid var(--color-border-secondary);border-radius:6px;font-size:14px">
+                ${['계약', '프로모션', '메모'].map(t => `<option ${t === e.entry_type ? 'selected' : ''}>${t}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--color-text-secondary);display:block;margin-bottom:2px">내용</label>
+              <input type="text" id="phEditContent_${e.id}" value="${escapeHtml(e.content)}" style="width:100%;padding:7px 9px;border:1px solid var(--color-border-secondary);border-radius:6px;font-size:14px;box-sizing:border-box">
+            </div>
+          </div>
+          <div style="display:flex;gap:7px">
+            <button onclick="saveEditEntry(${e.id})" style="padding:6px 14px;background:#1B4F8A;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer">저장</button>
+            <button onclick="cancelEditEntry()" style="padding:6px 14px;background:var(--color-background-tertiary);border:1px solid var(--color-border-secondary);border-radius:6px;font-size:13px;cursor:pointer">취소</button>
+          </div>
+        </div>`;
+    }
+
+    const attachments = e.attachments || [];
+    const attachHtml = attachments.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">` + attachments.map(a => `
+          <span style="display:inline-flex;align-items:center;gap:5px;background:var(--color-background-tertiary);border:1px solid var(--color-border-tertiary);border-radius:14px;padding:2px 10px;font-size:12px">
+            <a href="${a.file_url}" target="_blank" rel="noopener" style="color:#185FA5;text-decoration:none">${escapeHtml(a.file_name)}</a>
+            <i class="ti ti-x" aria-hidden="true" onclick="deleteAttachment(${a.id})" style="cursor:pointer;color:var(--color-text-secondary);font-size:12px" title="첨부 삭제"></i>
+          </span>`).join('') + `</div>` : '';
+
+    return `
+      <div style="display:flex;gap:11px;${rowStyle}">
+        <div style="flex-shrink:0;width:78px;font-size:13px;color:var(--color-text-secondary);padding-top:2px">${e.entry_date}</div>
+        <div style="flex-shrink:0">
+          <span style="display:inline-block;padding:2px 9px;border-radius:11px;font-size:12px;font-weight:600;color:#fff;background:${ENTRY_TYPE_COLOR[e.entry_type] || '#5C6672'}">${escapeHtml(e.entry_type)}</span>
+        </div>
+        <div style="flex:1;font-size:15px;line-height:1.5">${escapeHtml(e.content)}${attachHtml}</div>
+        <div style="flex-shrink:0;display:flex;gap:9px;padding-top:2px">
+          <i class="ti ti-paperclip" aria-hidden="true" onclick="triggerAttach(${e.id})" style="cursor:pointer;color:var(--color-text-secondary);font-size:16px" title="파일 첨부"></i>
+          <i class="ti ti-pencil" aria-hidden="true" onclick="startEditEntry(${e.id})" style="cursor:pointer;color:var(--color-text-secondary);font-size:16px" title="수정"></i>
+          <i class="ti ti-trash" aria-hidden="true" onclick="deleteHistoryEntry(${e.id})" style="cursor:pointer;color:var(--color-text-secondary);font-size:16px" title="삭제"></i>
+        </div>
+      </div>`;
+  }).join('') + `</div>`;
 }
 
 let partnerHistoryRequestId = 0;
@@ -2367,14 +2423,104 @@ async function loadPartnerHistory() {
     return;
   }
   if (el) el.innerHTML = `<div style="padding:20px;display:flex;align-items:center;gap:7px;color:var(--color-text-secondary)"><i class="ti ti-loader-2 spin-loop" aria-hidden="true"></i> 불러오는 중…</div>`;
+  const rangeStart = document.getElementById('phRangeStart')?.value;
+  const rangeEnd = document.getElementById('phRangeEnd')?.value;
   try {
-    const entries = await fetchJson('/api/dashboard/partner-history', { company: filters.company });
+    const params = { company: filters.company };
+    if (rangeStart) params.startDate = rangeStart;
+    if (rangeEnd) params.endDate = rangeEnd;
+    const entries = await fetchJson('/api/dashboard/partner-history', params);
     if (requestId !== partnerHistoryRequestId) return;
+    phEditingId = null;
     renderPartnerTimeline(entries);
   } catch (err) {
     if (requestId !== partnerHistoryRequestId) return;
     console.error('파트너 히스토리 로드 실패', err);
     if (el) el.innerHTML = '<div style="padding:20px;color:var(--color-text-secondary)">불러오지 못했습니다.</div>';
+  }
+}
+
+function startEditEntry(id) {
+  phEditingId = id;
+  renderPartnerTimeline(phLastEntries);
+}
+
+function cancelEditEntry() {
+  phEditingId = null;
+  renderPartnerTimeline(phLastEntries);
+}
+
+async function saveEditEntry(id) {
+  const entryDate = document.getElementById(`phEditDate_${id}`).value;
+  const entryType = document.getElementById(`phEditType_${id}`).value;
+  const content = document.getElementById(`phEditContent_${id}`).value.trim();
+  if (!entryDate || !content) { alert('날짜와 내용을 입력해주세요.'); return; }
+  const filters = getActiveFilters();
+  try {
+    const res = await fetch(`${API_BASE}/api/dashboard/partner-history/${id}?company=${encodeURIComponent(filters.company)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entryDate, entryType, content }),
+    });
+    if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error || `요청 실패 (${res.status})`); }
+    phEditingId = null;
+    loadPartnerHistory();
+  } catch (err) {
+    console.error('기록 수정 실패', err);
+    alert('수정에 실패했습니다: ' + err.message);
+  }
+}
+
+async function deleteHistoryEntry(id) {
+  const entry = phLastEntries.find(e => e.id === id);
+  const preview = entry ? (entry.content.length > 30 ? entry.content.slice(0, 30) + '...' : entry.content) : '';
+  if (!confirm(`이 기록을 삭제하시겠습니까?${preview ? '\n"' + preview + '"' : ''}\n삭제하면 되돌릴 수 없습니다.`)) return;
+  const filters = getActiveFilters();
+  try {
+    const res = await fetch(`${API_BASE}/api/dashboard/partner-history/${id}?company=${encodeURIComponent(filters.company)}`, { method: 'DELETE' });
+    if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error || `요청 실패 (${res.status})`); }
+    loadPartnerHistory();
+  } catch (err) {
+    console.error('기록 삭제 실패', err);
+    alert('삭제에 실패했습니다: ' + err.message);
+  }
+}
+
+function triggerAttach(id) {
+  phAttachTargetId = id;
+  document.getElementById('phAttachInput').click();
+}
+
+async function onPhAttachChange(e) {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file || phAttachTargetId == null) return;
+  const filters = getActiveFilters();
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const res = await fetch(`${API_BASE}/api/dashboard/partner-history/${phAttachTargetId}/attachments?company=${encodeURIComponent(filters.company)}`, {
+      method: 'POST',
+      body: fd,
+    });
+    if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error || `요청 실패 (${res.status})`); }
+    loadPartnerHistory();
+  } catch (err) {
+    console.error('첨부파일 업로드 실패', err);
+    alert('첨부파일 업로드에 실패했습니다: ' + err.message);
+  }
+}
+
+async function deleteAttachment(attachmentId) {
+  if (!confirm('첨부파일을 삭제하시겠습니까?')) return;
+  const filters = getActiveFilters();
+  try {
+    const res = await fetch(`${API_BASE}/api/dashboard/partner-history/attachments/${attachmentId}?company=${encodeURIComponent(filters.company)}`, { method: 'DELETE' });
+    if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error || `요청 실패 (${res.status})`); }
+    loadPartnerHistory();
+  } catch (err) {
+    console.error('첨부파일 삭제 실패', err);
+    alert('첨부파일 삭제에 실패했습니다: ' + err.message);
   }
 }
 
