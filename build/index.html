@@ -2101,8 +2101,9 @@ document.getElementById('panel-buyers').__refresh = () => {
         margin: 6,
         filename: fileName,
         image: { type: 'jpeg', quality: 0.95 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        html2canvas: { scale: 2, useCORS: true, windowWidth: 1600 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+        pagebreak: { mode: ['css', 'legacy'], avoid: ['.card', '.kc', '.chart-card', '.ins-card'] },
       };
       const blob = await window.html2pdf().set(opt).from(target).outputPdf('blob');
       downloadBlob(blob, fileName);
