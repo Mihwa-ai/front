@@ -761,6 +761,7 @@ const KPI_META = {
 };
 
 let kpiData = {
+  months: [],
   sales: { curr: [], prev: [], ...KPI_META.sales },
   qty:   { curr: [], prev: [], ...KPI_META.qty },
   buyer: { curr: [], prev: [], ...KPI_META.buyer },
@@ -800,6 +801,8 @@ function drawKpi() {
   const currPts = d.curr.map((v,i)=>`${PL+i*step},${PT+ch-(v/d.max)*ch}`).join(' ');
   html += `<polyline points="${currPts}" fill="none" stroke="${d.color}" stroke-width="2.5" stroke-linecap="round"/>`;
 
+  const mo = monthsToLabels(kpiData.months || []);
+
   d.curr.forEach((v,i) => {
     const x = PL+i*step;
     const y = PT+ch-(v/d.max)*ch;
@@ -820,8 +823,7 @@ function drawKpi() {
         html += `<text x="${x}" y="${ly}" font-size="10" fill="${d.color}" text-anchor="middle">${lbl}</text>`;
       }
     }
-    const mo = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월'];
-    html += `<text x="${x}" y="${H-2}" font-size="10" fill="${isLast?'#0C447C':'var(--color-text-secondary)'}" text-anchor="middle" font-weight="${isLast?'500':'400'}">${mo[i]}</text>`;
+    html += `<text x="${x}" y="${H-2}" font-size="10" fill="${isLast?'#0C447C':'var(--color-text-secondary)'}" text-anchor="middle" font-weight="${isLast?'500':'400'}">${mo[i] || ''}</text>`;
   });
 
   const lgY = 12;
@@ -1161,6 +1163,7 @@ async function loadDashboardData() {
     renderKpiSummaryBar({ kpi, newBuyers, buyerTrend, buyerSegments });
 
     kpiData = {
+      months: kpi.months,
       sales: { curr: kpi.sales.curr, prev: kpi.sales.prev, ...KPI_META.sales, max: Math.max(...kpi.sales.curr, ...kpi.sales.prev, 1) * 1.2 },
       qty:   { curr: kpi.qty.curr,   prev: kpi.qty.prev,   ...KPI_META.qty,   max: Math.max(...kpi.qty.curr, ...kpi.qty.prev, 1) * 1.2 },
       buyer: { curr: kpi.buyer.curr, prev: kpi.buyer.prev, ...KPI_META.buyer, max: Math.max(...kpi.buyer.curr, ...kpi.buyer.prev, 1) * 1.2 },
@@ -1651,7 +1654,7 @@ document.getElementById('panel-buyers').__refresh = () => {
 
     slide = slideChrome(pptx, 'KPI 시계열 — 라인 차트 (전년 비교)', subtitle);
     const kd = kpiData[activeKpi];
-    const mo = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월'];
+    const mo = monthsToLabels(kpiData.months || []);
     const n = kd.curr.length;
     const prevAligned = kd.prev.slice(kd.prev.length-n);
     const kpiFmtCode = activeKpi==='sales' ? '0.0"억"' : activeKpi==='qty' ? '#,##0"dz"' : '#,##0"개처"';
