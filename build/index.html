@@ -2212,7 +2212,10 @@ function renderCampaignCard(c) {
           <span style="font-size:16px;font-weight:600">${escapeHtml(c.campaign_name)}</span>
           <span style="font-size:13px;color:var(--color-text-secondary);margin-left:8px">${escapeHtml(c.campaign_type || '유형 미지정')} · ${c.start_date} ~ ${c.end_date} · ${escapeHtml(productLabel)} · ${escapeHtml(segmentLabel)}</span>
         </div>
-        <span style="font-size:13px;color:var(--color-text-secondary)">예산 ${c.budgetEok}억</span>
+        <div style="display:flex;align-items:center;gap:11px">
+          <span style="font-size:13px;color:var(--color-text-secondary)">예산 ${c.budgetEok}억</span>
+          <i class="ti ti-trash" aria-hidden="true" onclick="deleteCampaign(${c.id}, '${escapeHtml(c.campaign_name).replace(/'/g, "\\'")}')" style="font-size:17px;color:var(--color-text-secondary);cursor:pointer" title="캠페인 삭제"></i>
+        </div>
       </div>
       <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:9px">직전 동일기간(${c.comparePeriodStart} ~ ${c.comparePeriodEnd}) 대비</div>
       <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:11px">
@@ -2286,6 +2289,19 @@ async function submitCampaign() {
   } catch (err) {
     console.error('캠페인 등록 실패', err);
     if (msgEl) msgEl.textContent = '등록에 실패했습니다: ' + err.message;
+  }
+}
+
+async function deleteCampaign(id, name) {
+  if (!confirm(`"${name}" 캠페인을 삭제하시겠습니까?\n삭제하면 되돌릴 수 없습니다.`)) return;
+  const filters = getActiveFilters();
+  try {
+    const res = await fetch(`${API_BASE}/api/dashboard/campaigns/${id}?company=${encodeURIComponent(filters.company)}`, { method: 'DELETE' });
+    if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error || `요청 실패 (${res.status})`); }
+    loadCampaigns();
+  } catch (err) {
+    console.error('캠페인 삭제 실패', err);
+    alert('삭제에 실패했습니다: ' + err.message);
   }
 }
 
