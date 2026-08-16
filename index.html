@@ -2195,7 +2195,9 @@ async function loadCampaignProductOptions(company) {
 function renderCampaignCard(c) {
   const upliftSign = c.upliftEok >= 0 ? '+' : '';
   const upliftColor = c.upliftEok >= 0 ? '#1D9E75' : '#E24B4A';
-  const roiText = c.roiPct != null ? `${c.roiPct >= 0 ? '+' : ''}${c.roiPct}%` : '예산 미입력';
+  const roiText = !c.target_product_code
+    ? '타겟 제품 필요'
+    : (c.roiPct != null ? `${c.roiPct >= 0 ? '+' : ''}${c.roiPct}%` : '예산 미입력');
   const repurchaseText = c.repurchaseRatePct != null ? `${c.repurchaseRatePct}%` : '데이터 없음';
   return `
     <div class="card" style="margin-bottom:11px">
