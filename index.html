@@ -2619,8 +2619,22 @@ function renderReportDownloads(rows) {
       </div>
       <div style="font-size:13px;color:var(--color-text-secondary);flex-shrink:0">${dateStr}</div>
       ${r.file_url ? `<a href="${r.file_url}" download="${escapeHtml(r.file_name || '')}" target="_blank" rel="noopener" style="flex-shrink:0;display:flex;align-items:center;gap:5px;padding:5px 11px;background:#1B4F8A;color:#fff;border-radius:6px;font-size:13px;text-decoration:none;white-space:nowrap"><i class="ti ti-download" aria-hidden="true" style="font-size:14px"></i>다시 다운로드</a>` : ''}
+      <i class="ti ti-trash" aria-hidden="true" onclick="deleteReportDownload(${r.id})" style="flex-shrink:0;cursor:pointer;color:var(--color-text-secondary);font-size:17px" title="삭제"></i>
     </div>`;
   }).join('') + `</div>`;
+}
+
+async function deleteReportDownload(id) {
+  if (!confirm('이 다운로드 이력을 삭제하시겠습니까?\n저장된 파일도 함께 삭제됩니다.')) return;
+  const filters = getActiveFilters();
+  try {
+    const res = await fetch(`${API_BASE}/api/dashboard/partner-report-downloads/${id}?company=${encodeURIComponent(filters.company)}`, { method: 'DELETE' });
+    if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error || `요청 실패 (${res.status})`); }
+    loadReportDownloads();
+  } catch (err) {
+    console.error('다운로드 이력 삭제 실패', err);
+    alert('삭제에 실패했습니다: ' + err.message);
+  }
 }
 
 let reportDownloadRequestId = 0;
