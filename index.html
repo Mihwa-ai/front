@@ -1695,9 +1695,6 @@ document.getElementById('panel-buyers').__refresh = () => {
   async function ensurePptLibs(){
     if(!window.PptxGenJS) await loadScript('https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js');
   }
-  async function ensurePdfLib(){
-    if(!window.html2pdf) await loadScript('https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js');
-  }
   function downloadBlob(blob, filename){
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1708,7 +1705,7 @@ document.getElementById('panel-buyers').__refresh = () => {
   async function storeReportDownload(blob, fileName, reportType, tabNameStr){
     const f = getCurrentFilters();
     const fd = new FormData();
-    fd.append('file', blob, fileName);
+    if(blob) fd.append('file', blob, fileName);
     fd.append('reportType', reportType);
     fd.append('tabName', tabNameStr);
     fd.append('companyName', f.company || '');
@@ -2089,32 +2086,14 @@ document.getElementById('panel-buyers').__refresh = () => {
     }
   }
 
-  async function exportPdf(panel){
-    if(!panel) return;
-    try{
-      await ensurePdfLib();
-      const target = panel.querySelector('.wrap') || panel;
-      // html2canvas가 이 대시보드의 CSS grid/카드 레이아웃을 auto-size로 측정하면
-      // 캔버스 가로/세로 비율이 실제 화면과 전혀 다르게 나온다(그리드가 다른 열 수로
-      // 재계산됨) — width/height/windowWidth/windowHeight를 실제 스크롤 크기로
-      // 명시해야 캡처가 정확해진다.
-      const w = target.scrollWidth, h = target.scrollHeight;
-      const fileName = `블루팜코리아_${tabName()}_${stamp()}.pdf`;
-      const opt = {
-        margin: 6,
-        filename: fileName,
-        image: { type: 'jpeg', quality: 0.95 },
-        html2canvas: { scale: 2, useCORS: true, scrollX: 0, scrollY: 0, width: w, height: h, windowWidth: w, windowHeight: h },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
-        pagebreak: { mode: ['css', 'legacy'], avoid: ['.card', '.kc', '.chart-card', '.ins-card'] },
-      };
-      const blob = await window.html2pdf().set(opt).from(target).outputPdf('blob');
-      downloadBlob(blob, fileName);
-      await storeReportDownload(blob, fileName, 'PDF', tabName());
-    }catch(err){
-      console.error(err);
-      alert('PDF 생성에 실패했습니다.');
-    }
+  function exportPdf(){
+    // html2canvas/html2pdf.js로 두 차례 시도했으나 이 대시보드의 CSS grid/SVG
+    // 차트 레이아웃을 정확히 캡처하지 못했다(비율 붕괴, 좌측 잘림) — 근본적으로
+    // DOM을 캔버스로 근사 변환하는 방식의 한계로 판단해 브라우저 기본 인쇄로
+    // 되돌렸다. 대신 PDF는 파일 자체를 저장하지 못하므로 "다시 다운로드"는
+    // 지원하지 않고, 조회 필터 메타데이터만 이력에 남긴다.
+    window.print();
+    storeReportDownload(null, null, 'PDF', tabName());
   }
 
   document.addEventListener('click', e => {
@@ -2138,7 +2117,7 @@ document.getElementById('panel-buyers').__refresh = () => {
       opt.closest('.exp-menu').classList.add('hide');
       const fmt = opt.getAttribute('data-fmt');
       const panel = activePanel();
-      if(fmt === 'pdf') exportPdf(panel);
+      if(fmt === 'pdf') exportPdf();
       else exportPptx(panel);
       return;
     }
