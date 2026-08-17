@@ -2167,13 +2167,17 @@ function setAiInsightError() {
 function renderAiInsightTab(data) {
   const execEl = document.getElementById('execSummaryLines');
   const lines = Array.isArray(data.executiveSummary) ? data.executiveSummary.filter(Boolean).slice(0, 3) : [];
-  if (execEl && lines.length) {
-    const icons = [{ sym: '↑', color: '#1D9E75' }, { sym: '↓', color: '#E24B4A' }, { sym: '→', color: '#BA7517' }];
-    execEl.innerHTML = lines.map((line, i) => {
-      const icon = icons[i] || icons[icons.length - 1];
-      const marginBottom = i < lines.length - 1 ? '5px' : '0';
-      return `<div class="rowt" style="margin-bottom:${marginBottom};font-size:16px;line-height:1.55"><span style="color:${icon.color};font-weight:500;font-size:20px;flex-shrink:0;margin-top:1px">${icon.sym}</span><span style="color:#0C447C">${escapeHtml(line)}</span></div>`;
-    }).join('');
+  if (execEl) {
+    if (lines.length) {
+      const icons = [{ sym: '↑', color: '#1D9E75' }, { sym: '↓', color: '#E24B4A' }, { sym: '→', color: '#BA7517' }];
+      execEl.innerHTML = lines.map((line, i) => {
+        const icon = icons[i] || icons[icons.length - 1];
+        const marginBottom = i < lines.length - 1 ? '5px' : '0';
+        return `<div class="rowt" style="margin-bottom:${marginBottom};font-size:16px;line-height:1.55"><span style="color:${icon.color};font-weight:500;font-size:20px;flex-shrink:0;margin-top:1px">${icon.sym}</span><span style="color:#0C447C">${escapeHtml(line)}</span></div>`;
+      }).join('');
+    } else {
+      execEl.innerHTML = '<div style="color:var(--color-text-secondary)">데이터가 부족하여 요약을 생성하지 못했습니다.</div>';
+    }
   }
 
   const cards = data.cards || {};
@@ -2192,17 +2196,21 @@ function renderAiInsightTab(data) {
 
   const listEl = document.getElementById('actionItemsList');
   const items = Array.isArray(data.actionItems) ? data.actionItems.filter(it => it && it.text) : [];
-  if (listEl && items.length) {
-    listEl.innerHTML = items.map((item, i) => `
-      <div class="arow">
-        <div class="action-num">${i + 1}</div>
-        <div style="flex:1">
-          <div style="font-size:16px;line-height:1.5;margin-bottom:2px">${escapeHtml(item.text)}</div>
-          ${item.effect ? `<div style="font-size:14px;color:#1D9E75;display:flex;align-items:center;gap:4px"><i class="ti ti-trending-up" aria-hidden="true" style="font-size:16px"></i>${escapeHtml(item.effect)}</div>` : ''}
+  if (listEl) {
+    if (items.length) {
+      listEl.innerHTML = items.map((item, i) => `
+        <div class="arow">
+          <div class="action-num">${i + 1}</div>
+          <div style="flex:1">
+            <div style="font-size:16px;line-height:1.5;margin-bottom:2px">${escapeHtml(item.text)}</div>
+            ${item.effect ? `<div style="font-size:14px;color:#1D9E75;display:flex;align-items:center;gap:4px"><i class="ti ti-trending-up" aria-hidden="true" style="font-size:16px"></i>${escapeHtml(item.effect)}</div>` : ''}
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0"><button style="font-size:14px;padding:4px 13px;border-radius:6px;border:1px solid #1D9E75;background:#EAF3DE;color:#27500A;cursor:pointer">실행</button><button style="font-size:14px;padding:4px 13px;border-radius:6px;border:1px solid var(--color-border-secondary);background:var(--color-background-secondary);color:var(--color-text-secondary);cursor:pointer">완료</button></div>
         </div>
-        <div style="display:flex;gap:6px;flex-shrink:0"><button style="font-size:14px;padding:4px 13px;border-radius:6px;border:1px solid #1D9E75;background:#EAF3DE;color:#27500A;cursor:pointer">실행</button><button style="font-size:14px;padding:4px 13px;border-radius:6px;border:1px solid var(--color-border-secondary);background:var(--color-background-secondary);color:var(--color-text-secondary);cursor:pointer">완료</button></div>
-      </div>
-    `).join('');
+      `).join('');
+    } else {
+      listEl.innerHTML = '<div style="padding:20px;color:var(--color-text-secondary)">추천 실행과제를 생성하지 못했습니다.</div>';
+    }
   }
 }
 
