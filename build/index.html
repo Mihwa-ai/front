@@ -819,7 +819,7 @@ const TAB_MAP = {
 };
 const REDRAW = {
   'panel-sales': () => { drawKpi(); drawSalesType(); drawRegion(); drawDept(); drawNewBuyer(); },
-  'panel-buyers': () => { drawCv(); drawFunnel(); drawTrend(); drawHm(); drawRfm(); }
+  'panel-buyers': () => { drawFunnel(); drawCv(); drawTrend(); drawHm(); drawRfm(); }
 };
 
 function activatePanel(id){
@@ -1410,7 +1410,7 @@ let hS=[];
 let hL={'6':[],'12':[]};
 let hCnt={};
 
-const cvData={mos:['5월','6월','7월','8월','9월','10월','11월'],cart:[42,41,43,40,38,35,33],srch:[62,63,61,63,62,62,62]};
+let cvData={mos:['5월','6월','7월','8월','9월','10월','11월'],cart:[42,41,43,40,38,35,33],srch:[62,63,61,63,62,62,62]};
 
 let rfmData = [];
 
@@ -1540,14 +1540,43 @@ function drawRfm() {
   document.getElementById('rfmAlertText').textContent = alertText;
 }
 
-const funnelData = [
-  { step:'검색',      amountLabel:'8,420회', widthPct:100, color:'#185FA5', conv:{ rate:'62.4%', type:'ok' } },
-  { step:'제품 조회', amountLabel:'5,254회', widthPct:63,  color:'#378ADD', conv:{ rate:'44.1%', type:'ok' } },
-  { step:'장바구니',  amountLabel:'2,317건', widthPct:28,  color:'#85B7EB', textColor:'#0C447C', conv:{ rate:'36.8%', delta:'▼7.3%p', type:'bad' } },
-  { step:'결제 완료', amountLabel:'',        widthPct:10,  color:'#1D9E75', minWidth:32 },
-];
+let funnelData = [];
+
+function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+// 구매 퍼널(검색→조회→장바구니→결제) 로그는 아직 연동되지 않았다(섹션 제목에 "로그
+// 설계 완료 후 데이터 연동 예정"으로 안내 중) — 조회할 때마다 그럴듯한 예시 값으로
+// 다시 채운다. cvData의 장바구니→결제 최신월 값과 funnelData의 마지막 전환율을
+// 동일하게 맞춰 두 위젯이 서로 모순되지 않게 한다.
+function regenerateFunnelMock() {
+  const mos = ['5월', '6월', '7월', '8월', '9월', '10월', '11월'];
+  const n = mos.length;
+  const srchBase = randInt(58, 66);
+  const srch = mos.map(() => Math.min(72, Math.max(50, srchBase + randInt(-2, 2))));
+  const cartStart = randInt(39, 46);
+  const cartEnd = randInt(28, 36);
+  const cart = mos.map((_, i) => Math.round(cartStart + (cartEnd - cartStart) * (i / (n - 1))));
+  cvData = { mos, cart, srch };
+
+  const searchCnt = randInt(6000, 12000);
+  const viewRate = randInt(55, 70);
+  const viewCnt = Math.round(searchCnt * viewRate / 100);
+  const cartRate = randInt(35, 50);
+  const cartCnt = Math.round(viewCnt * cartRate / 100);
+  const payRate = cart[n - 1];
+  const payCnt = Math.round(cartCnt * payRate / 100);
+  const payDelta = Math.round((cart[n - 1] - cart[n - 2]) * 10) / 10;
+
+  funnelData = [
+    { step:'검색', amountLabel:`${searchCnt.toLocaleString()}회`, widthPct:100, color:'#185FA5', conv:{ rate:`${viewRate}.${randInt(0,9)}%`, type:'ok' } },
+    { step:'제품 조회', amountLabel:`${viewCnt.toLocaleString()}회`, widthPct:Math.round(viewCnt/searchCnt*100), color:'#378ADD', conv:{ rate:`${cartRate}.${randInt(0,9)}%`, type:'ok' } },
+    { step:'장바구니', amountLabel:`${cartCnt.toLocaleString()}건`, widthPct:Math.max(6, Math.round(cartCnt/searchCnt*100)), color:'#85B7EB', textColor:'#0C447C', conv:{ rate:`${payRate}.${randInt(0,9)}%`, delta:`▼${Math.abs(payDelta)}%p`, type:'bad' } },
+    { step:'결제 완료', amountLabel:'', widthPct:Math.max(4, Math.round(payCnt/searchCnt*100)), color:'#1D9E75', minWidth:32 },
+  ];
+}
 
 function drawFunnel() {
+  regenerateFunnelMock();
   let html = '';
   funnelData.forEach(f => {
     const barStyle = `width:${f.widthPct}%;background:${f.color}${f.textColor?`;color:${f.textColor}`:''}${f.minWidth?`;min-width:${f.minWidth}px`:''}`;
@@ -1672,13 +1701,13 @@ function drawCv(){
   svg.innerHTML=h;
 }
 
-drawCv(); drawFunnel(); loadBuyerData();
+drawFunnel(); drawCv(); loadBuyerData();
 
 // 새로고침: 토글 초기화(6개월) + 실데이터 재조회
 document.getElementById('panel-buyers').__refresh = () => {
   tM='6'; hM='6';
   document.querySelectorAll('#panel-buyers .ptab').forEach(t => t.classList.toggle('on', t.textContent.trim()==='6개월'));
-  drawCv(); drawFunnel(); loadBuyerData();
+  drawFunnel(); drawCv(); loadBuyerData();
 };
 </script>
 
