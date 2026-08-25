@@ -491,11 +491,7 @@ body[data-tab="panel-partner"] #commonFilter{display:none}
             </div>
             <table class="tbl">
               <thead><tr><th>제품명</th><th style="text-align:right">검색</th><th style="text-align:right">전환율</th></tr></thead>
-              <tbody>
-                <tr><td>B백신</td><td style="text-align:right;color:var(--color-text-secondary)">5,254</td><td style="text-align:right"><span class="cn">5.9%</span></td></tr>
-                <tr><td>D수두백신</td><td style="text-align:right;color:var(--color-text-secondary)">1,840</td><td style="text-align:right"><span class="cn">5.3%</span></td></tr>
-                <tr><td>C독감백신</td><td style="text-align:right;color:var(--color-text-secondary)">3,100</td><td style="text-align:right"><span class="cp">9.4%</span></td></tr>
-              </tbody>
+              <tbody id="bottleneckProductBody"></tbody>
             </table>
             <div style="margin-top:7px;padding:7px 10px;background:#E6F1FB;border-radius:9px;font-size:12px;color:#0C447C;display:flex;gap:6px;align-items:flex-start">
               <i class="ti ti-info-circle" aria-hidden="true" style="font-size:15px;flex-shrink:0;margin-top:1px"></i>
@@ -1588,6 +1584,34 @@ function drawFunnel() {
   document.getElementById('funnelRows').innerHTML = html;
   const bottleneck = funnelData.find(f => f.conv && f.conv.type==='bad');
   document.getElementById('funnelAlertText').textContent = `장바구니→결제 전환율 ${bottleneck.conv.delta.replace('▼','')} 하락 병목 감지`;
+  regenerateBottleneckProducts();
+}
+
+// 병목 제품 리스트도 검색/전환율 자체는 실데이터가 없어 임의로 채우지만, 제품명만은
+// 현재 조회 중인 회사의 실제 제품(#fltProduct 옵션)에서 뽑아 근거 없는 제품명이
+// 나오지 않게 한다.
+function regenerateBottleneckProducts() {
+  const tbody = document.getElementById('bottleneckProductBody');
+  if (!tbody) return;
+  const options = [...document.querySelectorAll('#fltProduct option')].filter(o => o.value);
+  if (!options.length) {
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--color-text-secondary)">회사를 선택해주세요.</td></tr>';
+    return;
+  }
+  const picks = options
+    .slice()
+    .sort(() => Math.random() - 0.5)
+    .slice(0, Math.min(3, options.length))
+    .map(o => ({
+      name: o.textContent,
+      searchCnt: randInt(800, 6000),
+      convRate: randInt(30, 95) / 10,
+    }))
+    .sort((a, b) => a.convRate - b.convRate);
+
+  tbody.innerHTML = picks.map(p => `
+    <tr><td>${escapeHtml(p.name)}</td><td style="text-align:right;color:var(--color-text-secondary)">${p.searchCnt.toLocaleString()}</td><td style="text-align:right"><span class="${p.convRate < 7 ? 'cn' : 'cp'}">${p.convRate.toFixed(1)}%</span></td></tr>
+  `).join('');
 }
 
 function drawTrend(){
