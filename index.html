@@ -1586,45 +1586,52 @@ function drawFunnel() {
   regenerateAssociatedProducts();
 }
 
-// 병목 제품 리스트도 검색/전환율 자체는 실데이터가 없어 임의로 채우지만, 제품명만은
-// 현재 조회 중인 회사의 실제 제품(#fltProduct 옵션)에서 뽑아 근거 없는 제품명이
-// 나오지 않게 한다.
-function regenerateBottleneckProducts() {
-  const tbody = document.getElementById('bottleneckProductBody');
-  if (!tbody) return;
-  const options = [...document.querySelectorAll('#fltProduct option')].filter(o => o.value && o.value !== '전체 제품');
-  if (!options.length) {
-    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--color-text-secondary)">회사를 선택해주세요.</td></tr>';
-    return;
-  }
-  const picks = options
-    .slice()
-    .sort(() => Math.random() - 0.5)
-    .slice(0, Math.min(3, options.length))
-    .map(o => ({
-      name: o.textContent,
-      searchCnt: randInt(800, 6000),
-      convRate: randInt(30, 95) / 10,
-    }))
-    .sort((a, b) => a.convRate - b.convRate);
-
-  tbody.innerHTML = picks.map(p => `
-    <tr><td>${escapeHtml(p.name)}</td><td style="text-align:right;color:var(--color-text-secondary)">${p.searchCnt.toLocaleString()}</td><td style="text-align:right"><span class="${p.convRate < 7 ? 'cn' : 'cp'}">${p.convRate.toFixed(1)}%</span></td></tr>
-  `).join('');
-}
-
-let otherCompanyProductsCache = {};
+let companyProductsCache = {};
 async function fetchProductsFor(co) {
-  if (otherCompanyProductsCache[co]) return otherCompanyProductsCache[co];
+  if (companyProductsCache[co]) return companyProductsCache[co];
   try {
     const res = await fetch(`${API_BASE}/api/dashboard/companies/${encodeURIComponent(co)}/products`);
     const list = await res.json();
-    otherCompanyProductsCache[co] = list.map(p => p.name);
+    companyProductsCache[co] = list.map(p => p.name);
   } catch (err) {
-    console.error('연관 구매 상품 후보 로드 실패', err);
-    otherCompanyProductsCache[co] = [];
+    console.error('제품 목록 로드 실패', err);
+    companyProductsCache[co] = [];
   }
-  return otherCompanyProductsCache[co];
+  return companyProductsCache[co];
+}
+
+// 병목 제품 리스트도 검색/전환율 자체는 실데이터가 없어 임의로 채우지만, 제품명만은
+// 현재 조회 중인 회사의 실제 제품에서 뽑아 근거 없는 제품명이 나오지 않게 한다.
+// #fltProduct 옵션은 회사 변경 직후 비동기로 갱신되는 중일 수 있어(레이스 컨디션으로
+// 옛 회사 제품이 섞여 나오는 버그가 있었다), DOM을 읽는 대신 회사명으로 직접 다시 받아온다.
+function regenerateBottleneckProducts() {
+  const tbody = document.getElementById('bottleneckProductBody');
+  if (!tbody) return;
+  const currentCompany = document.getElementById('fltCompany')?.value;
+  if (!currentCompany) {
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--color-text-secondary)">회사를 선택해주세요.</td></tr>';
+    return;
+  }
+  fetchProductsFor(currentCompany).then(names => {
+    if (!names.length) {
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--color-text-secondary)">제품 정보를 불러오지 못했습니다.</td></tr>';
+      return;
+    }
+    const picks = names
+      .slice()
+      .sort(() => Math.random() - 0.5)
+      .slice(0, Math.min(3, names.length))
+      .map(name => ({
+        name,
+        searchCnt: randInt(800, 6000),
+        convRate: randInt(30, 95) / 10,
+      }))
+      .sort((a, b) => a.convRate - b.convRate);
+
+    tbody.innerHTML = picks.map(p => `
+      <tr><td>${escapeHtml(p.name)}</td><td style="text-align:right;color:var(--color-text-secondary)">${p.searchCnt.toLocaleString()}</td><td style="text-align:right"><span class="${p.convRate < 7 ? 'cn' : 'cp'}">${p.convRate.toFixed(1)}%</span></td></tr>
+    `).join('');
+  });
 }
 
 // 연관 구매 상품 = "조회 중인 회사의 제품 A를 살 때, 다른 회사의 제품 B도 같이 산다"는
@@ -1636,16 +1643,17 @@ async function regenerateAssociatedProducts() {
   const currentCompany = document.getElementById('fltCompany')?.value;
   if (!currentCompany) return;
 
-  const ownProducts = [...document.querySelectorAll('#fltProduct option')].filter(o => o.value && o.value !== '전체 제품').map(o => o.textContent);
-  if (!ownProducts.length) return;
-
   const otherCompanies = [...document.querySelectorAll('#fltCompany option')]
     .map(o => o.value)
     .filter(co => co && co !== currentCompany && co !== '엑소코바이오');
   if (!otherCompanies.length) return;
 
-  const lists = await Promise.all(otherCompanies.map(fetchProductsFor));
-  const otherPool = lists.flat().filter(Boolean);
+  const [ownProducts, ...otherLists] = await Promise.all([
+    fetchProductsFor(currentCompany),
+    ...otherCompanies.map(fetchProductsFor),
+  ]);
+  if (!ownProducts.length) return;
+  const otherPool = otherLists.flat().filter(Boolean);
   if (!otherPool.length) return;
 
   const rows = [];
