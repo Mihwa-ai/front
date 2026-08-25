@@ -1627,33 +1627,38 @@ async function fetchProductsFor(co) {
   return otherCompanyProductsCache[co];
 }
 
-// 연관 구매 상품도 실데이터가 없어 임의로 채우되, 지금 조회 중인 회사 자신의 제품과는
-// 겹치지 않도록 다른 회사들의 제품명 풀에서만 골라 짝을 짓는다.
+// 연관 구매 상품 = "조회 중인 회사의 제품 A를 살 때, 다른 회사의 제품 B도 같이 산다"는
+// 뜻이므로 '+' 왼쪽은 항상 지금 조회 중인 회사의 실제 제품, 오른쪽은 다른 회사(엑소코바이오
+// 제외) 제품이어야 한다. 실데이터가 없어 검색량/전환율처럼 비율 자체는 임의로 채운다.
 async function regenerateAssociatedProducts() {
   const el = document.getElementById('assocProductBody');
   if (!el) return;
   const currentCompany = document.getElementById('fltCompany')?.value;
+  if (!currentCompany) return;
+
+  const ownProducts = [...document.querySelectorAll('#fltProduct option')].filter(o => o.value).map(o => o.textContent);
+  if (!ownProducts.length) return;
+
   const otherCompanies = [...document.querySelectorAll('#fltCompany option')]
     .map(o => o.value)
     .filter(co => co && co !== currentCompany && co !== '엑소코바이오');
   if (!otherCompanies.length) return;
 
   const lists = await Promise.all(otherCompanies.map(fetchProductsFor));
-  const pool = lists.flat().filter(Boolean);
-  if (pool.length < 2) return;
+  const otherPool = lists.flat().filter(Boolean);
+  if (!otherPool.length) return;
 
   const rows = [];
   const usedPairs = new Set();
   let attempts = 0;
   while (rows.length < 3 && attempts < 30) {
     attempts++;
-    const a = pool[randInt(0, pool.length - 1)];
-    const b = pool[randInt(0, pool.length - 1)];
-    if (a === b) continue;
-    const key = [a, b].sort().join('|');
+    const own = ownProducts[randInt(0, ownProducts.length - 1)];
+    const other = otherPool[randInt(0, otherPool.length - 1)];
+    const key = `${own}|${other}`;
     if (usedPairs.has(key)) continue;
     usedPairs.add(key);
-    rows.push({ pair: `${a} + ${b}`, pct: randInt(150, 420) / 10 });
+    rows.push({ pair: `${own} + ${other}`, pct: randInt(150, 420) / 10 });
   }
   rows.sort((x, y) => y.pct - x.pct);
 
