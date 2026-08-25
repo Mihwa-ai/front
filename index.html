@@ -1635,7 +1635,7 @@ async function regenerateAssociatedProducts() {
   const currentCompany = document.getElementById('fltCompany')?.value;
   const otherCompanies = [...document.querySelectorAll('#fltCompany option')]
     .map(o => o.value)
-    .filter(co => co && co !== currentCompany);
+    .filter(co => co && co !== currentCompany && co !== '엑소코바이오');
   if (!otherCompanies.length) return;
 
   const lists = await Promise.all(otherCompanies.map(fetchProductsFor));
