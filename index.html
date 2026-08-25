@@ -1592,7 +1592,7 @@ function drawFunnel() {
 function regenerateBottleneckProducts() {
   const tbody = document.getElementById('bottleneckProductBody');
   if (!tbody) return;
-  const options = [...document.querySelectorAll('#fltProduct option')].filter(o => o.value);
+  const options = [...document.querySelectorAll('#fltProduct option')].filter(o => o.value && o.value !== '전체 제품');
   if (!options.length) {
     tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--color-text-secondary)">회사를 선택해주세요.</td></tr>';
     return;
@@ -1636,7 +1636,7 @@ async function regenerateAssociatedProducts() {
   const currentCompany = document.getElementById('fltCompany')?.value;
   if (!currentCompany) return;
 
-  const ownProducts = [...document.querySelectorAll('#fltProduct option')].filter(o => o.value).map(o => o.textContent);
+  const ownProducts = [...document.querySelectorAll('#fltProduct option')].filter(o => o.value && o.value !== '전체 제품').map(o => o.textContent);
   if (!ownProducts.length) return;
 
   const otherCompanies = [...document.querySelectorAll('#fltCompany option')]
