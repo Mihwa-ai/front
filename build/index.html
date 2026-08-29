@@ -1632,7 +1632,7 @@ async function fetchProductsFor(co) {
 // 현재 조회 중인 회사의 실제 제품에서 뽑아 근거 없는 제품명이 나오지 않게 한다.
 // #fltProduct 옵션은 회사 변경 직후 비동기로 갱신되는 중일 수 있어(레이스 컨디션으로
 // 옛 회사 제품이 섞여 나오는 버그가 있었다), DOM을 읽는 대신 회사명으로 직접 다시 받아온다.
-function regenerateBottleneckProducts() {
+async function regenerateBottleneckProducts() {
   const tbody = document.getElementById('bottleneckProductBody');
   if (!tbody) return;
   const currentCompany = document.getElementById('fltCompany')?.value;
@@ -1640,26 +1640,25 @@ function regenerateBottleneckProducts() {
     tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--color-text-secondary)">회사를 선택해주세요.</td></tr>';
     return;
   }
-  fetchProductsFor(currentCompany).then(names => {
-    if (!names.length) {
-      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--color-text-secondary)">제품 정보를 불러오지 못했습니다.</td></tr>';
-      return;
-    }
-    const picks = names
-      .slice()
-      .sort(() => Math.random() - 0.5)
-      .slice(0, Math.min(3, names.length))
-      .map(name => ({
-        name,
-        searchCnt: randInt(800, 6000),
-        convRate: randInt(30, 95) / 10,
-      }))
-      .sort((a, b) => a.convRate - b.convRate);
+  const names = await fetchProductsFor(currentCompany);
+  if (!names.length) {
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--color-text-secondary)">제품 정보를 불러오지 못했습니다.</td></tr>';
+    return;
+  }
+  const picks = names
+    .slice()
+    .sort(() => Math.random() - 0.5)
+    .slice(0, Math.min(3, names.length))
+    .map(name => ({
+      name,
+      searchCnt: randInt(800, 6000),
+      convRate: randInt(30, 95) / 10,
+    }))
+    .sort((a, b) => a.convRate - b.convRate);
 
-    tbody.innerHTML = picks.map(p => `
-      <tr><td>${escapeHtml(p.name)}</td><td style="text-align:right;color:var(--color-text-secondary)">${p.searchCnt.toLocaleString()}</td><td style="text-align:right"><span class="${p.convRate < 7 ? 'cn' : 'cp'}">${p.convRate.toFixed(1)}%</span></td></tr>
-    `).join('');
-  });
+  tbody.innerHTML = picks.map(p => `
+    <tr><td>${escapeHtml(p.name)}</td><td style="text-align:right;color:var(--color-text-secondary)">${p.searchCnt.toLocaleString()}</td><td style="text-align:right"><span class="${p.convRate < 7 ? 'cn' : 'cp'}">${p.convRate.toFixed(1)}%</span></td></tr>
+  `).join('');
 }
 
 // 연관 구매 상품 = "조회 중인 회사의 제품 A를 살 때, 다른 회사의 제품 B도 같이 산다"는
@@ -1926,18 +1925,38 @@ document.getElementById('panel-buyers').__refresh = () => {
     });
   }
 
+  function addCoverSlide(pptx){
+    const f = getCurrentFilters();
+    const slide = pptx.addSlide();
+    slide.background = { color:PC.navy };
+    slide.addShape('rect', { x:0,y:4.55,w:13.33,h:0.06, fill:{color:PC.blue}, line:{type:'none'} });
+    slide.addText('SALES INTELLIGENCE MONTHLY REPORT', { x:0.7,y:2.35,w:11.9,h:0.4, fontSize:13, color:PC.paleBlue, charSpacing:2, fontFace:FONT });
+    slide.addText(`${f.company || '전체 파트너'} 월간 세일즈 인텔리전스 리포트`, { x:0.7,y:2.75,w:11.9,h:1.1, fontSize:32, bold:true, color:'FFFFFF', fontFace:FONT });
+    slide.addText(`대상 기간 ${f.period || '-'}`, { x:0.7,y:4.75,w:11.9,h:0.45, fontSize:15, color:PC.paleBlue, fontFace:FONT });
+    slide.addText(`생성일 ${stamp().replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')} · 블루팜코리아`, { x:0.7,y:5.2,w:11.9,h:0.4, fontSize:11, color:PC.lightBlue, fontFace:FONT });
+    return slide;
+  }
+
+  // 핵심 지표를 표지 다음 장에서 바로 보여주는 히어로 슬라이드 — 화면 상단
+  // 공통 KPI 카드(#commonKpi)의 실제 값을 그대로 확대해 사용한다.
+  function addKpiHeroSlide(pptx, subtitle){
+    const slide = slideChrome(pptx, '이번 달 핵심 지표', subtitle);
+    addKpiTiles(slide, 1.4);
+    return slide;
+  }
+
+  function addClosingSlide(pptx){
+    const slide = pptx.addSlide();
+    slide.background = { color:PC.navy };
+    slide.addText('감사합니다', { x:0.7,y:3.0,w:11.9,h:1.0, fontSize:30, bold:true, color:'FFFFFF', align:'center', fontFace:FONT });
+    slide.addText('블루팜코리아 Sales Intelligence Dashboard', { x:0.7,y:3.95,w:11.9,h:0.4, fontSize:12, color:PC.paleBlue, align:'center', fontFace:FONT });
+    return slide;
+  }
+
   function buildSalesSlides(pptx){
     const subtitle = filterSubtitle();
 
-    let slide = slideChrome(pptx, '매출 대시보드', subtitle);
-    addKpiTiles(slide, 1.05);
-    addTextCardsRow(slide, [
-      { t:'이번 달 매출 변화', b:'서울 +24.6% 급성장 — 신규 거래처 유입 주도' },
-      { t:'이탈 위험 거래처', b:'High 위험 142개처 (+22) — 즉시 대응 필요' },
-      { t:'추천 실행과제', b:'경기 이탈 위험 Top10 즉시 접촉 → 예상 방어 ₩12M' },
-    ], 2.25, 1.15);
-
-    slide = slideChrome(pptx, 'KPI 시계열 — 라인 차트 (전년 비교)', subtitle);
+    let slide = slideChrome(pptx, 'KPI 시계열 — 라인 차트 (전년 비교)', subtitle);
     const kd = kpiData[activeKpi];
     const mo = monthsToLabels(kpiData.months || []);
     const n = kd.curr.length;
@@ -1984,35 +2003,6 @@ document.getElementById('panel-buyers').__refresh = () => {
     slide.addText('신규처 Top 10', { x:6.6,y:1.1,w:6,h:0.3, fontSize:12, bold:true, color:PC.navy, fontFace:FONT });
     slide.addText(newBuyerData.top5.map((b,i)=>`${i+1}. ${b.name} · ${b.dept}`).join('\n'),
       { x:6.6,y:1.6,w:6.3,h:4.8, fontSize:11, color:PC.text, fontFace:FONT, lineSpacing:18 });
-
-    slide = slideChrome(pptx, 'Top 거래처 랭킹 · 대시보드 분석 요약', subtitle);
-    const rankData = [
-      { rank:1, name:'서울대병원약국', amt:'₩1.2억', delta:'▲2', color:PC.green },
-      { rank:2, name:'연세세브란스', amt:'₩0.9억', delta:'―', color:PC.gray },
-      { rank:3, name:'삼성서울병원', amt:'₩0.8억', delta:'▼1', color:PC.red },
-      { rank:4, name:'경희대병원', amt:'₩0.7억', delta:'▲1', color:PC.green },
-    ];
-    slide.addTable([
-      [tableHeaderCell('#','center'), tableHeaderCell('기관명'), tableHeaderCell('매출','right'), tableHeaderCell('변동','right')],
-      ...rankData.map(r => [
-        { text:String(r.rank), options:{ fontSize:10, align:'center', fontFace:FONT, color:r.rank===1?PC.amber:PC.gray, bold:r.rank===1 } },
-        { text:r.name, options:{ fontSize:10, fontFace:FONT } },
-        { text:r.amt, options:{ fontSize:10, align:'right', fontFace:FONT } },
-        { text:r.delta, options:{ fontSize:10, align:'right', color:r.color, fontFace:FONT } },
-      ]),
-    ], { x:0.4,y:1.1,w:6.2,h:2.5, border:{type:'solid',color:'E4E7EC',pt:0.5} });
-
-    slide.addText('대시보드 분석 요약 (AI)', { x:7,y:1.1,w:5.9,h:0.3, fontSize:12, bold:true, color:PC.navy, fontFace:FONT });
-    [
-      { arrow:'↑', color:PC.green, text:'서울 지역 내과·소아과 중심 매출 +24.6% 급증 — 신규 거래처 유입 주도.' },
-      { arrow:'↓', color:PC.red, text:'경기·인천 기존 거래처 구매 감소 — 이탈 위험 142개처 즉시 대응 필요.' },
-      { arrow:'→', color:PC.amber, text:'도매 채널 비중 37% 유지 — 병의원 채널 방어 전략 지속 유효.' },
-    ].forEach((s,i)=>{
-      slide.addText([
-        { text:s.arrow+' ', options:{ color:s.color, bold:true } },
-        { text:s.text, options:{ color:PC.text } },
-      ], { x:7,y:1.5+i*0.9,w:5.9,h:0.85, fontSize:10.5, fontFace:FONT, valign:'top' });
-    });
   }
 
   function buildBuyersSlides(pptx){
@@ -2068,7 +2058,7 @@ document.getElementById('panel-buyers').__refresh = () => {
     slide.addText('구매 빈도: 옅은 색(미구매/낮음) → 진한 색(높음), 점선 테두리는 이탈 신호',
       { x:0.4,y:5.7,w:12.5,h:0.3, fontSize:9, color:PC.gray, fontFace:FONT });
 
-    slide = slideChrome(pptx, 'C. 구매 퍼널 분석 — A백신', subtitle);
+    slide = slideChrome(pptx, '구매 퍼널 전환율 (예시 지표)', subtitle);
     const fx0=0.4, fBarMaxW=4.6, fy0=1.2, frh=0.55, fgap=0.3;
     funnelData.forEach((f,i)=>{
       const y=fy0+i*(frh+fgap);
@@ -2092,114 +2082,140 @@ document.getElementById('panel-buyers').__refresh = () => {
       { name:'장바구니→결제', labels:cvData.mos, values:cvData.cart },
       { name:'검색→조회', labels:cvData.mos, values:cvData.srch },
     ], { x:7.2,y:1.4,w:5.6,h:4.6, chartColors:[PC.red, PC.paleBlue], lineSize:[2,1.5], showLegend:true, legendPos:'b', fontFace:FONT, showValue:true, dataLabelFormatCode:'0.0"%"' });
-
-    slide = slideChrome(pptx, '병목 제품 · 연관 구매 · AI 요약', subtitle);
-    slide.addTable([
-      [tableHeaderCell('제품명'), tableHeaderCell('검색','right'), tableHeaderCell('전환율','right')],
-      ['B백신','5,254',{ text:'5.9%', options:{ fontSize:10, align:'right', color:PC.red, fontFace:FONT } }],
-      ['D수두백신','1,840',{ text:'5.3%', options:{ fontSize:10, align:'right', color:PC.red, fontFace:FONT } }],
-      ['C독감백신','3,100',{ text:'9.4%', options:{ fontSize:10, align:'right', color:PC.green, fontFace:FONT } }],
-    ].map((row,i)=> i===0 ? row : row.map((c,j)=> typeof c==='string' ? { text:c, options:{ fontSize:10, align:j===1?'right':'left', color:j===1?PC.gray:PC.text, fontFace:FONT } } : c),
-    ), { x:0.4,y:1.1,w:6,h:1.8, border:{type:'solid',color:'E4E7EC',pt:0.5} });
-    slide.addText('전환율 = 실제 구매 전환 수 ÷ 검색량 × 100. 전환율이 낮은 순으로 정렬되어 병목 제품을 우선 표시합니다.',
-      { x:0.4,y:2.95,w:6,h:0.4, fontSize:8.5, color:PC.steel, italic:true, fontFace:FONT });
-
-    slide.addText('연관 구매 상품 Top 3', { x:0.4,y:3.5,w:6,h:0.3, fontSize:11, bold:true, color:PC.navy, fontFace:FONT });
-    [
-      ['A백신 + C독감백신','38.2%'], ['A백신 + 주사기SET','24.7%'], ['B백신 + 보관용기','18.1%'],
-    ].forEach((t,i)=>{
-      slide.addText([
-        { text:t[0], options:{ color:PC.text } },
-        { text:'   '+t[1], options:{ color:PC.steel, bold:true } },
-      ], { x:0.4,y:3.9+i*0.4,w:6,h:0.35, fontSize:10, fontFace:FONT });
-    });
-
-    slide.addText('A. 구매처 분석 AI 요약', { x:7,y:1.1,w:5.9,h:0.3, fontSize:11, bold:true, color:PC.navy, fontFace:FONT });
-    [
-      { arrow:'↑', color:PC.green, text:'경기·인천 이탈위험 144개처 (+22). 예상 방어 매출 ₩38M — 즉시 CRM 실행 권장.' },
-      { arrow:'↓', color:PC.amber, text:'B백신 장바구니→결제 –7.3%p 급락 — 번들 프로모션 검토 필요.' },
-      { arrow:'→', color:PC.green, text:'2차 미구매 132개처 리마인더 발송 → 전환율 +18% 예측.' },
-    ].forEach((s,i)=>{
-      slide.addText([
-        { text:s.arrow+' ', options:{ color:s.color, bold:true } },
-        { text:s.text, options:{ color:PC.text } },
-      ], { x:7,y:1.5+i*1.2,w:5.9,h:1.1, fontSize:10, fontFace:FONT, valign:'top' });
-    });
+    slide.addText('구매 퍼널(검색→조회→장바구니→결제) 로그는 아직 연동되지 않아 예시 값입니다.',
+      { x:7.2,y:6.05,w:5.6,h:0.35, fontSize:8.5, color:PC.steel, italic:true, fontFace:FONT });
   }
 
-  function buildAiSlides(pptx){
+  // 병목 제품/연관 구매 상품은 화면과 동일하게 "제품명은 실제, 검색량·전환율은 예시"
+  // 정책을 그대로 따른다 — DOM에 이미 그려진 결과를 재사용하지 않고, 어느 탭에서
+  // PPT를 내보내든 최신 상태이도록 이 시점에 직접 다시 계산한다.
+  async function addFunnelBottleneckSlide(pptx, subtitle){
+    await regenerateBottleneckProducts();
+    await regenerateAssociatedProducts();
+
+    const slide = slideChrome(pptx, '병목 제품 · 연관 구매 (예시 지표)', subtitle);
+    const bnRows = [...document.querySelectorAll('#bottleneckProductBody tr')]
+      .map(tr => [...tr.querySelectorAll('td')].map(td => td.textContent))
+      .filter(cols => cols.length >= 3);
+
+    if(bnRows.length){
+      slide.addTable([
+        [tableHeaderCell('제품명'), tableHeaderCell('검색','right'), tableHeaderCell('전환율','right')],
+        ...bnRows.map(r => [
+          { text:r[0], options:{ fontSize:9.5, fontFace:FONT } },
+          { text:r[1], options:{ fontSize:9.5, align:'right', color:PC.gray, fontFace:FONT } },
+          { text:r[2], options:{ fontSize:9.5, align:'right', fontFace:FONT } },
+        ]),
+      ], { x:0.4,y:1.1,w:6.2,h:1.8, border:{type:'solid',color:'E4E7EC',pt:0.5} });
+    }else{
+      slide.addText('데이터를 불러오지 못했습니다.', { x:0.4,y:1.3,w:6.2,h:0.5, fontSize:11, color:PC.gray, fontFace:FONT });
+    }
+    slide.addText('제품명은 조회 중인 회사의 실제 제품이며, 검색량·전환율은 구매 퍼널 로그 미연동으로 예시 값입니다.',
+      { x:0.4,y:2.95,w:6.2,h:0.5, fontSize:8.5, color:PC.steel, italic:true, fontFace:FONT });
+
+    slide.addText('연관 구매 상품 Top 3 (예시)', { x:0.4,y:3.6,w:6.2,h:0.3, fontSize:11, bold:true, color:PC.navy, fontFace:FONT });
+    const assocRows = [...document.querySelectorAll('#assocProductBody .arow')]
+      .map(row => [...row.querySelectorAll('span')].map(s => s.textContent))
+      .filter(cols => cols.length >= 2);
+    if(assocRows.length){
+      assocRows.forEach((t,i)=>{
+        slide.addText([
+          { text:t[0], options:{ color:PC.text } },
+          { text:'   '+t[1], options:{ color:PC.steel, bold:true } },
+        ], { x:0.4,y:4.0+i*0.4,w:6.2,h:0.35, fontSize:9.5, fontFace:FONT });
+      });
+    }else{
+      slide.addText('데이터를 불러오지 못했습니다.', { x:0.4,y:4.0,w:6.2,h:0.4, fontSize:10, color:PC.gray, fontFace:FONT });
+    }
+    return slide;
+  }
+
+  // AI 인사이트는 화면(#panel-ai)이 이미 사용 중인 것과 동일한 실 데이터 API를
+  // 그대로 다시 호출해 구성한다 — product/competitor 카드는 근거 데이터가 없어
+  // 항상 hasData=false로 오므로, 지어낸 수치 대신 미연동 안내만 짧게 덧붙인다.
+  async function buildAiSlides(pptx){
     const subtitle = filterSubtitle();
+    const filters = getActiveFilters();
+
+    let insight = { executiveSummary:[], cards:{}, actionItems:[] };
+    let buyerAnalysis = { churnRisk:{hasData:false,body:''}, actionRecommendation:{hasData:false,body:''} };
+    try{ insight = await fetchJson('/api/dashboard/ai-insight-tab', filters); }
+    catch(err){ console.error('PPT: AI 인사이트 탭 로드 실패', err); }
+    try{ buyerAnalysis = await fetchJson('/api/dashboard/buyer-analysis-summary', filters); }
+    catch(err){ console.error('PPT: 구매처 분석 AI 요약 로드 실패', err); }
 
     let slide = slideChrome(pptx, 'AI 인사이트 — Executive Summary', subtitle);
-    [
-      { arrow:'↑', color:PC.green, text:'서울 지역 내과·소아과 신규 구매처 +22개처 유입, 전월 대비 매출 +24.6% 급성장. A백신 판매수량 전년 동기 대비 +31% 증가.' },
-      { arrow:'↓', color:PC.red, text:'경기·인천 권역 기존 거래처 144개처 90일 이상 미구매 이탈 신호. 예상 방어 매출 ₩38M — 즉각 CRM 실행 권장.' },
-      { arrow:'→', color:PC.amber, text:'도매 채널 비중 3%p 상승(37%→40%). 병의원 직접 채널 방어를 위한 프로모션 전략 재설계 필요 시점.' },
-    ].forEach((e,i)=>{
-      slide.addText([
-        { text:e.arrow+'  ', options:{ color:e.color, bold:true, fontSize:16 } },
-        { text:e.text, options:{ color:PC.navy, fontSize:13 } },
-      ], { x:0.4,y:1.2+i*1.6,w:12.5,h:1.5, fontFace:FONT, valign:'top' });
-    });
+    const execLines = (insight.executiveSummary || []).filter(Boolean);
+    if(execLines.length){
+      const arrows = [{a:'↑',c:PC.green},{a:'↓',c:PC.red},{a:'→',c:PC.amber}];
+      execLines.forEach((text,i)=>{
+        const ar = arrows[i] || arrows[arrows.length-1];
+        slide.addText([
+          { text:ar.a+'  ', options:{ color:ar.c, bold:true, fontSize:16 } },
+          { text, options:{ color:PC.navy, fontSize:13 } },
+        ], { x:0.4,y:1.2+i*1.6,w:12.5,h:1.5, fontFace:FONT, valign:'top' });
+      });
+    }else{
+      slide.addText('데이터가 부족하여 요약을 생성하지 못했습니다.', { x:0.4,y:1.2,w:12.5,h:0.5, fontSize:12, color:PC.gray, fontFace:FONT });
+    }
 
-    const insights = [
-      { type:'Growth', color:PC.green, bg:'EAF3DE', textColor:'27500A', body:'서울 내과·소아과 매출 +31%. 신규 18개처 유입 주도. A백신 집중 노출 강화 권장.', action:'서울 확장 프로모션 기획' },
-      { type:'Risk', color:PC.red, bg:'FCEBEB', textColor:'791F1F', body:'경기·인천 매출 –15.4%. 이탈위험 144개처 즉시 CRM 실행 시 방어 ₩38M.', action:'이탈 위험 CRM 즉시 실행' },
-      { type:'Product', color:PC.amber, bg:'FAEEDA', textColor:'633806', body:'B백신 전환율 –7.3%p. 가격 저항 탐지. 번들 프로모션 검토 필요.', action:'B백신 전환율 개선 방안' },
-      { type:'Customer', color:PC.blue, bg:'E6F1FB', textColor:PC.navy, body:'2차 미구매 132개처. 30일 이내 리마인더 발송 시 전환율 +18% 예측.', action:'2차 구매 유도 캠페인' },
-      { type:'Channel', color:PC.purple, bg:'EEEDFE', textColor:'3C3489', body:'도매 비중 40%로 상승. 병의원 전용 할인 패키지 및 MR 접촉 강화 필요.', action:'병의원 채널 방어 기획' },
-      { type:'경쟁품 (외부 데이터 반영)', color:PC.red, bg:'FCEBEB', textColor:'791F1F', body:'프리오릭스 26년 공급 재개 — IQVIA Q4 데이터 기준 엠엠알 M/S –8.2%p 하락 감지. 25년 4Q 출고 33,640 Vial(1Q 대비 –63%). 국가출하승인 통과 시 추가 물량 유입 위험.', action:'프리오릭스 대응 — 병의원 락인 전략 강화' },
-    ];
+    const CARD_META = {
+      growth:   { type:'Growth',   color:PC.green,  bg:'EAF3DE', textColor:'27500A' },
+      risk:     { type:'Risk',     color:PC.red,    bg:'FCEBEB', textColor:'791F1F' },
+      customer: { type:'Customer', color:PC.blue,   bg:'E6F1FB', textColor:PC.navy },
+      channel:  { type:'Channel',  color:PC.purple, bg:'EEEDFE', textColor:'3C3489' },
+    };
     slide = slideChrome(pptx, 'AI 인사이트 카드', subtitle);
-    const cardW=4.05, cardH=2.85, gapX=0.15, gapY=0.2, gx0=0.4, gy0=1.15;
-    insights.forEach((c,i)=>{
-      const col=i%3, row=Math.floor(i/3);
-      const x=gx0+col*(cardW+gapX), y=gy0+row*(cardH+gapY);
-      slide.addShape('rect', { x,y,w:0.05,h:cardH, fill:{color:c.color}, line:{type:'none'} });
-      slide.addShape('roundRect', { x:x+0.05,y,w:cardW-0.05,h:cardH, fill:{color:'FFFFFF'}, line:{color:'E4E7EC',width:0.75} });
-      slide.addShape('roundRect', { x:x+0.2,y:y+0.15,w:2.0,h:0.3, fill:{color:c.bg}, line:{type:'none'} });
-      slide.addText(c.type, { x:x+0.2,y:y+0.15,w:2.0,h:0.3, fontSize:8, bold:true, color:c.textColor, align:'center', valign:'middle', fontFace:FONT });
-      slide.addText(c.body, { x:x+0.2,y:y+0.55,w:cardW-0.4,h:cardH-1.05, fontSize:c.body.length>60?8:9, color:PC.text, fontFace:FONT, valign:'top' });
-      slide.addText('→ '+c.action, { x:x+0.2,y:y+cardH-0.45,w:cardW-0.4,h:0.4, fontSize:8, bold:true, color:c.color, fontFace:FONT });
+    const cardW=6.15, cardH=2.6, gapX=0.2, cgapY=0.2, gx0=0.4, gy0=1.15;
+    Object.keys(CARD_META).forEach((key,i)=>{
+      const meta = CARD_META[key];
+      const card = (insight.cards && insight.cards[key]) || { hasData:false, body:'', action:'' };
+      const col=i%2, row=Math.floor(i/2);
+      const x=gx0+col*(cardW+gapX), y=gy0+row*(cardH+cgapY);
+      const body = card.hasData ? card.body : (card.body || '데이터가 부족하여 분석할 수 없습니다.');
+      slide.addShape('rect', { x,y,w:0.06,h:cardH, fill:{color:meta.color}, line:{type:'none'} });
+      slide.addShape('roundRect', { x:x+0.06,y,w:cardW-0.06,h:cardH, fill:{color:'FFFFFF'}, line:{color:'E4E7EC',width:0.75} });
+      slide.addShape('roundRect', { x:x+0.25,y:y+0.2,w:1.8,h:0.35, fill:{color:meta.bg}, line:{type:'none'} });
+      slide.addText(meta.type, { x:x+0.25,y:y+0.2,w:1.8,h:0.35, fontSize:9, bold:true, color:meta.textColor, align:'center', valign:'middle', fontFace:FONT });
+      slide.addText(body, { x:x+0.25,y:y+0.68,w:cardW-0.5,h:cardH-1.25, fontSize:11, color:PC.text, fontFace:FONT, valign:'top' });
+      if(card.hasData && card.action){
+        slide.addText('→ '+card.action, { x:x+0.25,y:y+cardH-0.5,w:cardW-0.5,h:0.4, fontSize:9.5, bold:true, color:meta.color, fontFace:FONT });
+      }
     });
+    slide.addText('제품별(개별 품목)·경쟁품 시장점유율 데이터는 아직 연동되지 않아 이번 리포트에서는 제외했습니다.',
+      { x:0.4,y:gy0+2*cardH+cgapY+0.1,w:12.5,h:0.35, fontSize:8.5, italic:true, color:PC.gray, fontFace:FONT });
 
     slide = slideChrome(pptx, '추천 실행과제', subtitle);
-    [
-      { n:1, color:PC.green, title:'경기·인천 이탈 위험 Top 10 거래처 즉시 접촉 — 재구매 쿠폰 발행', sub:'예상 방어 매출 ₩12M · 즉시 실행' },
-      { n:2, color:PC.green, title:'2차 미구매 132개처 30일 리마인더 캠페인 발송', sub:'전환율 +18% 예측' },
-      { n:3, color:PC.red, title:'프리오릭스 공급 재개 대응 — 엠엠알 기존 구매처 병의원 전용 락인 프로모션 설계', sub:'25년 4Q 출고 –63% / 프리오릭스 국검 통과 모니터링 중' },
-      { n:4, color:PC.steel, title:'병의원 전용 즉시할인 패키지 프로모션 설계 — 12월 적용', sub:'채널 비중 방어' },
-    ].forEach((a,i)=>{
-      const y=1.2+i*1.35;
-      slide.addShape('ellipse', { x:0.4,y,w:0.5,h:0.5, fill:{color:a.color}, line:{type:'none'} });
-      slide.addText(String(a.n), { x:0.4,y,w:0.5,h:0.5, fontSize:14, bold:true, color:'FFFFFF', align:'center', valign:'middle', fontFace:FONT });
-      slide.addText(a.title, { x:1.1,y,w:11.6,h:0.6, fontSize:12, color:'222222', fontFace:FONT, valign:'top' });
-      slide.addText(a.sub, { x:1.1,y:y+0.55,w:11.6,h:0.4, fontSize:10, color:a.color, fontFace:FONT });
-    });
+    const items = (insight.actionItems || []).filter(it => it && it.text);
+    if(items.length){
+      const rowColors = [PC.green, PC.blue, PC.amber, PC.steel, PC.purple];
+      items.forEach((a,i)=>{
+        const y=1.2+i*1.15;
+        const c = rowColors[i % rowColors.length];
+        slide.addShape('ellipse', { x:0.4,y,w:0.5,h:0.5, fill:{color:c}, line:{type:'none'} });
+        slide.addText(String(i+1), { x:0.4,y,w:0.5,h:0.5, fontSize:14, bold:true, color:'FFFFFF', align:'center', valign:'middle', fontFace:FONT });
+        slide.addText(a.text, { x:1.1,y,w:11.6,h:0.55, fontSize:12, color:'222222', fontFace:FONT, valign:'top' });
+        if(a.effect) slide.addText(a.effect, { x:1.1,y:y+0.5,w:11.6,h:0.4, fontSize:10, color:c, fontFace:FONT });
+      });
+    }else{
+      slide.addText('추천 실행과제를 생성하지 못했습니다.', { x:0.4,y:1.2,w:12.5,h:0.5, fontSize:12, color:PC.gray, fontFace:FONT });
+    }
 
-    slide = slideChrome(pptx, '이탈위험 거래처 상세 근거', subtitle);
-    const churnHeader = ['기관명','지역','마지막 구매(R)','빈도 감소(F)','금액 감소(M)','점수','등급','AI 추천'].map(h=>tableHeaderCell(h,'center'));
-    const churnRows = [
-      ['강남연세의원','서울','92일전','–62%','–71%','92','H','쿠폰 즉시 발송'],
-      ['인천미래소아과','인천','85일전','–58%','–64%','87','H','MR 즉시 접촉'],
-      ['수원중앙의원','경기','74일전','–38%','–44%','68','M','번들 안내'],
-    ].map(r => {
-      const risky = r[6]==='H';
-      const dc = risky ? PC.darkRed : PC.darkAmber;
-      return [
-        { text:r[0], options:{ fontSize:9.5, bold:true, fontFace:FONT } },
-        { text:r[1], options:{ fontSize:9.5, align:'center', fontFace:FONT } },
-        { text:r[2], options:{ fontSize:9.5, align:'center', color:dc, fontFace:FONT } },
-        { text:r[3], options:{ fontSize:9.5, align:'center', color:dc, fontFace:FONT } },
-        { text:r[4], options:{ fontSize:9.5, align:'center', color:dc, fontFace:FONT } },
-        { text:r[5], options:{ fontSize:9.5, align:'center', bold:true, color:dc, fontFace:FONT } },
-        { text:r[6], options:{ fontSize:9.5, align:'center', bold:true, color:'FFFFFF', fill:{color:risky?PC.red:'EF9F27'}, fontFace:FONT } },
-        { text:r[7], options:{ fontSize:9.5, color:PC.steel, fontFace:FONT } },
-      ];
-    });
-    slide.addTable([churnHeader, ...churnRows], { x:0.4,y:1.1,w:12.5,h:2.2, border:{type:'solid',color:'E4E7EC',pt:0.5} });
-    slide.addText('위험 점수 = Recency 40% + Frequency 35% + Monetary 25% 가중 합산',
-      { x:0.4,y:3.5,w:12.5,h:0.4, fontSize:9.5, color:PC.steel, fontFace:FONT });
+    slide = slideChrome(pptx, '구매처 이탈 리스크 & 실행 제안', subtitle);
+    const churn = rfmData.find(r=>r.seg==='이탈위험');
+    if(churn){
+      slide.addText(String(churn.count), { x:0.4,y:1.2,w:3,h:1.1, fontSize:44, bold:true, color:PC.red, fontFace:FONT });
+      slide.addText('이탈위험 거래처 (명)', { x:0.4,y:2.25,w:3,h:0.3, fontSize:10, color:PC.gray, fontFace:FONT });
+      slide.addText(churn.trend, { x:0.4,y:2.6,w:3,h:0.4, fontSize:13, bold:!!churn.trendBold, color:churn.trendColor, fontFace:FONT });
+    }
+    const cr = buyerAnalysis.churnRisk || { hasData:false, body:'' };
+    const ar = buyerAnalysis.actionRecommendation || { hasData:false, body:'' };
+    slide.addShape('roundRect', { x:3.9,y:1.2,w:8.9,h:2.0, fill:{color:'FCEBEB'}, line:{type:'none'} });
+    slide.addText('이탈 리스크 AI 요약', { x:4.1,y:1.35,w:8.5,h:0.3, fontSize:10, bold:true, color:PC.darkRed, fontFace:FONT });
+    slide.addText(cr.body || '데이터가 부족하여 분석할 수 없습니다.', { x:4.1,y:1.7,w:8.5,h:1.4, fontSize:11.5, color:PC.text, fontFace:FONT, valign:'top' });
+    slide.addShape('roundRect', { x:3.9,y:3.35,w:8.9,h:2.0, fill:{color:'E6F1FB'}, line:{type:'none'} });
+    slide.addText('추천 실행 제안', { x:4.1,y:3.5,w:8.5,h:0.3, fontSize:10, bold:true, color:PC.navy, fontFace:FONT });
+    slide.addText(ar.body || '데이터가 부족하여 분석할 수 없습니다.', { x:4.1,y:3.85,w:8.5,h:1.4, fontSize:11.5, color:PC.text, fontFace:FONT, valign:'top' });
   }
 
   // 내보내기 버튼이 여러 API 호출(및 PPT 빌드) 동안 아무 반응이 없어 보이던 것을
@@ -2221,24 +2237,31 @@ document.getElementById('panel-buyers').__refresh = () => {
     }
   }
 
-  async function exportPptx(panel){
-    if(!panel) return;
+  // PPT는 PDF(파트너 공유용 전략 문서)와 달리 발표 자료 성격이므로, 현재 보고
+  // 있는 탭 하나만이 아니라 매출·구매처·AI 인사이트를 한 번에 아우르는 단일
+  // 월간 보고 덱을 항상 만든다 — 내부 임원진 보고/파트너사 PM 발표 겸용.
+  async function exportPptx(){
     setExportLoading(true, 'PPT 생성 중…');
     try{
       await ensurePptLibs();
+      // PPT는 매출·구매처 데이터를 함께 다루는 통합 덱이라, 지금 보고 있는 탭과
+      // 무관하게 두 탭의 실데이터를 여기서 직접 새로고침해 최신 필터 기준으로 맞춘다
+      // (탭을 열어본 적 없으면 페이지 로드 시점의 이전 필터 값이 남아있을 수 있음).
+      await Promise.all([loadDashboardData(), loadBuyerData()]);
+
       const pptx = new PptxGenJS();
       pptx.defineLayout({name:'W', width:13.33, height:7.5}); pptx.layout = 'W';
+      const subtitle = filterSubtitle();
 
-      const builders = {
-        'panel-sales':  buildSalesSlides,
-        'panel-buyers': buildBuyersSlides,
-        'panel-ai':     buildAiSlides,
-      };
-      const build = builders[panel.id];
-      if(!build){ alert('현재 화면은 PPT로 저장할 수 없습니다.'); return; }
-      build(pptx);
+      addCoverSlide(pptx);
+      addKpiHeroSlide(pptx, subtitle);
+      buildSalesSlides(pptx);
+      buildBuyersSlides(pptx);
+      await addFunnelBottleneckSlide(pptx, subtitle);
+      await buildAiSlides(pptx);
+      addClosingSlide(pptx);
 
-      const fileName = `블루팜코리아_${tabName()}_${stamp()}.pptx`;
+      const fileName = `블루팜코리아_월간보고_${stamp()}.pptx`;
       const blob = await pptx.write({outputType:'blob'});
       downloadBlob(blob, fileName);
       await storeReportDownload(blob, fileName, 'PPT', tabName());
@@ -2372,9 +2395,8 @@ document.getElementById('panel-buyers').__refresh = () => {
     if(opt){
       opt.closest('.exp-menu').classList.add('hide');
       const fmt = opt.getAttribute('data-fmt');
-      const panel = activePanel();
       if(fmt === 'pdf') buildPartnerReportPdf();
-      else exportPptx(panel);
+      else exportPptx();
       return;
     }
     document.querySelectorAll('.exp-menu').forEach(m => m.classList.add('hide'));
