@@ -2202,8 +2202,28 @@ document.getElementById('panel-buyers').__refresh = () => {
       { x:0.4,y:3.5,w:12.5,h:0.4, fontSize:9.5, color:PC.steel, fontFace:FONT });
   }
 
+  // 내보내기 버튼이 여러 API 호출(및 PPT 빌드) 동안 아무 반응이 없어 보이던 것을
+  // 개선 — 생성이 끝날 때까지 버튼 자체에 로딩 표시를 띄우고 중복 클릭을 막는다.
+  function setExportLoading(loading, label){
+    const btn = document.querySelector('.btn-export');
+    if(!btn) return;
+    if(loading){
+      if(!btn.dataset.originalHtml) btn.dataset.originalHtml = btn.innerHTML;
+      btn.innerHTML = `<i class="ti ti-loader-2 spin-loop" aria-hidden="true" style="font-size:17px"></i>${label || '생성 중…'}`;
+      btn.disabled = true;
+      btn.style.opacity = '0.7';
+      btn.style.cursor = 'wait';
+    }else{
+      if(btn.dataset.originalHtml) btn.innerHTML = btn.dataset.originalHtml;
+      btn.disabled = false;
+      btn.style.opacity = '';
+      btn.style.cursor = '';
+    }
+  }
+
   async function exportPptx(panel){
     if(!panel) return;
+    setExportLoading(true, 'PPT 생성 중…');
     try{
       await ensurePptLibs();
       const pptx = new PptxGenJS();
@@ -2225,6 +2245,8 @@ document.getElementById('panel-buyers').__refresh = () => {
     }catch(err){
       console.error(err);
       alert('PPT 생성에 실패했습니다.');
+    }finally{
+      setExportLoading(false);
     }
   }
 
@@ -2239,6 +2261,7 @@ document.getElementById('panel-buyers').__refresh = () => {
     const reportEl = document.getElementById('partnerReportPrint');
     if(!reportEl) return;
     reportEl.innerHTML = '<div class="report-doc" style="text-align:center;padding:80px 0;color:#888">리포트를 생성하는 중입니다…</div>';
+    setExportLoading(true, '리포트 생성 중…');
 
     const pctDelta = (curr, prev) => (!prev ? null : ((curr - prev) / prev) * 100);
     const fmtPctR = v => (v === null || v === undefined || isNaN(v)) ? '데이터 부족' : `${v > 0 ? '+' : ''}${v.toFixed(1)}%`;
@@ -2317,12 +2340,15 @@ document.getElementById('panel-buyers').__refresh = () => {
       `;
 
       document.body.classList.add('report-print-mode');
+      setExportLoading(false);
       window.print();
       storeReportDownload(null, null, 'PDF', tabName());
     }catch(err){
       console.error(err);
       alert('리포트 생성에 실패했습니다.');
       reportEl.innerHTML = '';
+    }finally{
+      setExportLoading(false);
     }
   }
 
