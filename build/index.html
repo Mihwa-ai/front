@@ -88,6 +88,27 @@ body[data-tab="panel-partner"] #commonFilter{display:none}
   .shell-topbar,.filter-bar,.kpi-bar,.exp,.btn-query,.ai-strip{display:none !important}
   body{padding:0}
 }
+#partnerReportPrint{display:none}
+@media print{
+  body.report-print-mode > .app{display:none !important}
+  body.report-print-mode #partnerReportPrint{display:block !important}
+}
+.report-doc{font-family:var(--font-sans);color:#1a1a1a;background:#fff;padding:14mm 16mm;max-width:210mm;margin:0 auto}
+.report-doc h1{font-size:22px;color:#0C447C;margin:0 0 4px}
+.report-doc .rmeta{font-size:13px;color:#666;margin-bottom:18px;padding-bottom:12px;border-bottom:2px solid #185FA5}
+.report-doc h2{font-size:16px;color:#0C447C;border-bottom:1.5px solid #B5D4F4;padding-bottom:5px;margin:22px 0 10px}
+.report-doc table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:8px}
+.report-doc th{background:#F4F8FD;color:#185FA5;text-align:left;padding:6px 8px;border-bottom:1px solid #C5D9EC;font-weight:500}
+.report-doc td{padding:6px 8px;border-bottom:1px solid #E4E7EC}
+.report-doc .kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:6px}
+.report-doc .kpi-tile{background:#F4F8FD;border-radius:8px;padding:12px;text-align:center}
+.report-doc .kpi-tile .kl{font-size:12px;color:#185FA5}
+.report-doc .kpi-tile .kv{font-size:20px;font-weight:700;color:#0C447C;margin:2px 0}
+.report-doc .kpi-tile .kd{font-size:12px;font-weight:500}
+.report-doc p{font-size:13px;line-height:1.6;margin:0 0 8px}
+.report-doc .action-item{font-size:13px;line-height:1.5;padding:8px 0;border-bottom:1px solid #eee}
+.report-doc .action-item:last-child{border-bottom:none}
+.report-doc .footer-note{font-size:11px;color:#999;margin-top:24px;border-top:1px solid #eee;padding-top:8px}
 
 /* ===== 매출 대시보드 (scoped) ===== */
 #panel-sales{
@@ -196,6 +217,8 @@ body[data-tab="panel-partner"] #commonFilter{display:none}
 </style>
 </head>
 <body data-tab="panel-sales">
+
+<div id="partnerReportPrint"></div>
 
 <div class="app">
 
@@ -847,6 +870,9 @@ window.addEventListener('beforeprint', () => {
   if(active && REDRAW[active.id]) REDRAW[active.id]();
 });
 window.addEventListener('afterprint', () => {
+  document.body.classList.remove('report-print-mode');
+  const reportEl = document.getElementById('partnerReportPrint');
+  if(reportEl) reportEl.innerHTML = '';
   const active = document.querySelector('.tabpanel.active');
   if(active && REDRAW[active.id]) REDRAW[active.id]();
 });
@@ -2202,14 +2228,102 @@ document.getElementById('panel-buyers').__refresh = () => {
     }
   }
 
-  function exportPdf(){
-    // html2canvas/html2pdf.js로 두 차례 시도했으나 이 대시보드의 CSS grid/SVG
-    // 차트 레이아웃을 정확히 캡처하지 못했다(비율 붕괴, 좌측 잘림) — 근본적으로
-    // DOM을 캔버스로 근사 변환하는 방식의 한계로 판단해 브라우저 기본 인쇄로
-    // 되돌렸다. 대신 PDF는 파일 자체를 저장하지 못하므로 "다시 다운로드"는
-    // 지원하지 않고, 조회 필터 메타데이터만 이력에 남긴다.
-    window.print();
-    storeReportDownload(null, null, 'PDF', tabName());
+  // PDF는 화면을 그대로 캡처하는 대신, 파트너사와 공유해서 판매 현황을 점검하고
+  // 향후 전략·프로모션 방향을 논의하는 용도에 맞게 핵심 수치만 뽑아 별도 리포트
+  // 레이아웃으로 새로 구성한다. html2canvas 대신 브라우저 기본 인쇄를 그대로
+  // 쓰되(레이아웃 안정성 때문), 인쇄 대상을 이 리포트 전용 DOM으로 한정한다.
+  async function buildPartnerReportPdf(){
+    const filters = getActiveFilters();
+    if(!filters.company){ alert('회사를 먼저 선택해주세요.'); return; }
+
+    const reportEl = document.getElementById('partnerReportPrint');
+    if(!reportEl) return;
+    reportEl.innerHTML = '<div class="report-doc" style="text-align:center;padding:80px 0;color:#888">리포트를 생성하는 중입니다…</div>';
+
+    const pctDelta = (curr, prev) => (!prev ? null : ((curr - prev) / prev) * 100);
+    const fmtPctR = v => (v === null || v === undefined || isNaN(v)) ? '데이터 부족' : `${v > 0 ? '+' : ''}${v.toFixed(1)}%`;
+    const deltaColor = v => (v === null || v === undefined || isNaN(v)) ? '#888' : (v >= 0 ? '#1D9E75' : '#E24B4A');
+
+    try{
+      const [kpi, region, dept, segRes, summary] = await Promise.all([
+        fetchJson('/api/dashboard/kpi-trend', { ...filters, months: 2 }),
+        fetchJson('/api/dashboard/region-sales', filters),
+        fetchJson('/api/dashboard/dept-sales', filters),
+        fetchJson('/api/dashboard/buyer-segments', filters),
+        fetchJson('/api/dashboard/ai-summary', filters).catch(() => null),
+      ]);
+      let actionItems = [];
+      try{
+        const insight = await fetchJson('/api/dashboard/ai-insight-tab', filters);
+        actionItems = Array.isArray(insight.actionItems) ? insight.actionItems.filter(it => it && it.text) : [];
+      }catch(err){ console.error('추천 실행과제 로드 실패', err); }
+
+      const lastIdx = kpi.months.length - 1;
+      const prevIdx = lastIdx - 1;
+      const salesCurr = kpi.sales.curr[lastIdx], salesMom = pctDelta(salesCurr, kpi.sales.curr[prevIdx]), salesYoy = pctDelta(salesCurr, kpi.sales.prev[lastIdx]);
+      const qtyCurr = kpi.qty.curr[lastIdx], qtyMom = pctDelta(qtyCurr, kpi.qty.curr[prevIdx]);
+      const buyerCurr = kpi.buyer.curr[lastIdx], buyerMom = pctDelta(buyerCurr, kpi.buyer.curr[prevIdx]);
+
+      const periodLabel = document.getElementById('fltPeriod')?.value || monthsToLabels([kpi.months[lastIdx]])[0];
+      const now = new Date();
+      const genDate = `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}`;
+
+      const top3Rows = (rows, labelKey) => (rows && rows.length)
+        ? rows.slice(0,3).map((r,i) => `<tr><td>${i+1}</td><td>${escapeHtml(r[labelKey])}</td><td style="text-align:right">${r.amount.toFixed(2)}억</td></tr>`).join('')
+        : '<tr><td colspan="3" style="text-align:center;color:#999">데이터 없음</td></tr>';
+
+      const segRows = (segRes.segments || []).map(s => `
+        <tr><td>${escapeHtml(s.seg)}</td><td style="text-align:right">${s.count}곳</td><td style="text-align:right;color:${deltaColor(s.deltaCount)}">${s.deltaCount >= 0 ? '+' : ''}${s.deltaCount}</td></tr>
+      `).join('');
+
+      const summaryHtml = (summary && summary.summary)
+        ? summary.summary.split('\n').filter(Boolean).map(line => `<p>${escapeHtml(line)}</p>`).join('')
+        : '<p style="color:#999">AI 분석 요약을 생성하지 못했습니다.</p>';
+
+      const actionHtml = actionItems.length
+        ? actionItems.map((it,i) => `<div class="action-item"><strong>${i+1}.</strong> ${escapeHtml(it.text)}${it.effect ? ` <span style="color:#1D9E75">— ${escapeHtml(it.effect)}</span>` : ''}</div>`).join('')
+        : '<p style="color:#999">추천 실행과제를 생성하지 못했습니다.</p>';
+
+      reportEl.innerHTML = `
+        <div class="report-doc">
+          <h1>${escapeHtml(filters.company)} 판매 현황 리포트</h1>
+          <div class="rmeta">기준 기간: ${escapeHtml(periodLabel)} · 생성일: ${genDate} · 블루팜코리아 SID</div>
+
+          <h2>핵심 지표 요약</h2>
+          <div class="kpi-grid">
+            <div class="kpi-tile"><div class="kl">매출</div><div class="kv">${salesCurr.toFixed(2)}억</div><div class="kd" style="color:${deltaColor(salesMom)}">전월비 ${fmtPctR(salesMom)}</div></div>
+            <div class="kpi-tile"><div class="kl">판매수량</div><div class="kv">${Math.round(qtyCurr).toLocaleString()}dz</div><div class="kd" style="color:${deltaColor(qtyMom)}">전월비 ${fmtPctR(qtyMom)}</div></div>
+            <div class="kpi-tile"><div class="kl">구매처수</div><div class="kv">${Math.round(buyerCurr).toLocaleString()}개처</div><div class="kd" style="color:${deltaColor(buyerMom)}">전월비 ${fmtPctR(buyerMom)}</div></div>
+          </div>
+          <div style="font-size:12px;color:#666;margin-bottom:6px">매출 전년동월비 ${fmtPctR(salesYoy)}</div>
+
+          <h2>AI 분석 요약</h2>
+          ${summaryHtml}
+
+          <h2>지역 · 진료과별 매출 Top 3</h2>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <table><thead><tr><th>순위</th><th>지역</th><th style="text-align:right">매출</th></tr></thead><tbody>${top3Rows(region,'region')}</tbody></table>
+            <table><thead><tr><th>순위</th><th>진료과</th><th style="text-align:right">매출</th></tr></thead><tbody>${top3Rows(dept,'dept')}</tbody></table>
+          </div>
+
+          <h2>구매처 세그먼트 현황</h2>
+          <table><thead><tr><th>세그먼트</th><th style="text-align:right">구매처수</th><th style="text-align:right">전월대비</th></tr></thead><tbody>${segRows}</tbody></table>
+
+          <h2>추천 실행과제 · 프로모션 방향</h2>
+          ${actionHtml}
+
+          <div class="footer-note">본 리포트는 블루팜코리아 Sales Intelligence Dashboard에서 자동 생성되었습니다. 출고완료 기준, 전일 기준 새벽 03:00 데이터로 갱신됩니다.</div>
+        </div>
+      `;
+
+      document.body.classList.add('report-print-mode');
+      window.print();
+      storeReportDownload(null, null, 'PDF', tabName());
+    }catch(err){
+      console.error(err);
+      alert('리포트 생성에 실패했습니다.');
+      reportEl.innerHTML = '';
+    }
   }
 
   document.addEventListener('click', e => {
@@ -2233,7 +2347,7 @@ document.getElementById('panel-buyers').__refresh = () => {
       opt.closest('.exp-menu').classList.add('hide');
       const fmt = opt.getAttribute('data-fmt');
       const panel = activePanel();
-      if(fmt === 'pdf') exportPdf();
+      if(fmt === 'pdf') buildPartnerReportPdf();
       else exportPptx(panel);
       return;
     }
