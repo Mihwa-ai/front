@@ -2249,7 +2249,7 @@ document.getElementById('panel-buyers').__refresh = () => {
 
       await ensurePdfLibs();
       reportEl.classList.add('report-capturing');
-      const canvas = await html2canvas(reportEl, { scale:2, backgroundColor:'#ffffff', windowWidth:reportEl.scrollWidth, useCORS:true });
+      const canvas = await html2canvas(reportEl, { scale:1.5, backgroundColor:'#ffffff', windowWidth:reportEl.scrollWidth, useCORS:true });
       reportEl.classList.remove('report-capturing');
       reportEl.innerHTML = '';
 
@@ -2257,14 +2257,17 @@ document.getElementById('panel-buyers').__refresh = () => {
       const pdf = new jsPDF({ unit:'pt', format:'a4' });
       const pageW = pdf.internal.pageSize.getWidth(), pageH = pdf.internal.pageSize.getHeight();
       const imgW = pageW, imgH = canvas.height * imgW / canvas.width;
-      const imgData = canvas.toDataURL('image/png');
+      // 텍스트가 대부분인 문서를 PNG로 인코딩하면 업로드 용량 제한(15MB)을 가볍게
+      // 넘길 만큼 커진다 — 흰 배경 위 텍스트는 JPEG 압축에 잘 맞아 화질 저하 없이
+      // 용량을 10배 이상 줄여준다.
+      const imgData = canvas.toDataURL('image/jpeg', 0.92);
       let heightLeft = imgH, position = 0;
-      pdf.addImage(imgData, 'PNG', 0, position, imgW, imgH);
+      pdf.addImage(imgData, 'JPEG', 0, position, imgW, imgH);
       heightLeft -= pageH;
       while(heightLeft > 0){
         position -= pageH;
         pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgW, imgH);
+        pdf.addImage(imgData, 'JPEG', 0, position, imgW, imgH);
         heightLeft -= pageH;
       }
 
