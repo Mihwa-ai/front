@@ -92,7 +92,11 @@ body[data-tab="panel-partner"] #commonFilter{display:none}
 /* html2canvas로 캡처하는 동안만 화면 밖에서 고정 폭으로 렌더링 — 폭이 정해지지
    않으면 kpi-grid 같은 내부 grid의 컬럼 폭이 0으로 붕괴해 캡처가 깨진다. */
 #partnerReportPrint.report-capturing{display:block;position:fixed;top:0;left:-10000px;width:800px;z-index:-1}
-.report-doc{font-family:var(--font-sans);color:#1a1a1a;background:#fff;padding:14mm 16mm;max-width:210mm;margin:0 auto}
+/* 여백은 PDF 변환 단계(jsPDF 페이지 마진)에서만 준다 — 여기서도 padding을
+   주면 캔버스를 페이지 단위로 자를 때 이 padding이 1페이지 상단에만 한 번
+   나타나고(첫 페이지만 위쪽 공백이 유독 길어짐) 좌우는 매 페이지마다 PDF
+   마진과 중복으로 더해져 이중으로 넓어진다. */
+.report-doc{font-family:var(--font-sans);color:#1a1a1a;background:#fff;padding:0;max-width:210mm;margin:0 auto}
 .report-doc h1{font-size:22px;color:#0C447C;margin:0 0 4px}
 .report-doc .rmeta{font-size:13px;color:#666;margin-bottom:18px;padding-bottom:12px;border-bottom:2px solid #185FA5}
 .report-doc h2{font-size:16px;color:#0C447C;border-bottom:1.5px solid #B5D4F4;padding-bottom:5px;margin:22px 0 10px}
@@ -2260,7 +2264,7 @@ document.getElementById('panel-buyers').__refresh = () => {
       // 이미지를 채운다 — 페이지 경계에서 이미지를 그대로 자르면 여백 없이
       // 위/아래가 딱 붙어버리므로, 캔버스 자체를 페이지 단위로 잘라(슬라이스)
       // 매 페이지 안쪽 여백 안에 딱 맞게 배치한다.
-      const MARGIN = 56.7; // 20mm
+      const MARGIN = 42.5; // 15mm
       const contentW = pageW - MARGIN*2, contentH = pageH - MARGIN*2;
       const pxPerPt = canvas.width / contentW;
       const sliceHeightPx = Math.floor(contentH * pxPerPt);
