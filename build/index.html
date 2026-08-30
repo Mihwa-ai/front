@@ -2258,19 +2258,32 @@ document.getElementById('panel-buyers').__refresh = () => {
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF({ unit:'pt', format:'a4' });
       const pageW = pdf.internal.pageSize.getWidth(), pageH = pdf.internal.pageSize.getHeight();
-      const imgW = pageW, imgH = canvas.height * imgW / canvas.width;
+      // 인쇄물로도 쓸 수 있도록 표준 여백(2cm)을 사방에 두고, 그 안쪽 영역에만
+      // 이미지를 채운다 — 페이지 경계에서 이미지를 그대로 자르면 여백 없이
+      // 위/아래가 딱 붙어버리므로, 캔버스 자체를 페이지 단위로 잘라(슬라이스)
+      // 매 페이지 안쪽 여백 안에 딱 맞게 배치한다.
+      const MARGIN = 56.7; // 20mm
+      const contentW = pageW - MARGIN*2, contentH = pageH - MARGIN*2;
+      const pxPerPt = canvas.width / contentW;
+      const sliceHeightPx = Math.floor(contentH * pxPerPt);
       // 텍스트가 대부분인 문서를 PNG로 인코딩하면 업로드 용량 제한(15MB)을 가볍게
       // 넘길 만큼 커진다 — 흰 배경 위 텍스트는 JPEG 압축에 잘 맞아 화질 저하 없이
       // 용량을 10배 이상 줄여준다.
-      const imgData = canvas.toDataURL('image/jpeg', 0.92);
-      let heightLeft = imgH, position = 0;
-      pdf.addImage(imgData, 'JPEG', 0, position, imgW, imgH);
-      heightLeft -= pageH;
-      while(heightLeft > 0){
-        position -= pageH;
-        pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', 0, position, imgW, imgH);
-        heightLeft -= pageH;
+      let renderedPx = 0, firstPage = true;
+      while(renderedPx < canvas.height){
+        const thisSlicePx = Math.min(sliceHeightPx, canvas.height - renderedPx);
+        const sliceCanvas = document.createElement('canvas');
+        sliceCanvas.width = canvas.width;
+        sliceCanvas.height = thisSlicePx;
+        const sctx = sliceCanvas.getContext('2d');
+        sctx.fillStyle = '#ffffff';
+        sctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+        sctx.drawImage(canvas, 0, renderedPx, canvas.width, thisSlicePx, 0, 0, canvas.width, thisSlicePx);
+        const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.92);
+        if(!firstPage) pdf.addPage();
+        pdf.addImage(sliceData, 'JPEG', MARGIN, MARGIN, contentW, thisSlicePx / pxPerPt);
+        firstPage = false;
+        renderedPx += thisSlicePx;
       }
 
       const fileName = `블루팜코리아_${filters.company}_판매현황리포트_${stamp()}.pdf`;
