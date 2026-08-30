@@ -2148,7 +2148,7 @@ document.getElementById('panel-buyers').__refresh = () => {
       addActionItemsSlide(pptx, subtitle, ctx);
       addClosingSlide(pptx);
 
-      const fileName = `블루팜코리아_월간보고_${stamp()}.pptx`;
+      const fileName = `블루팜코리아_${ctx.filters.company || '전체'}_월간보고_${stamp()}.pptx`;
       const blob = await pptx.write({outputType:'blob'});
       downloadBlob(blob, fileName);
       await storeReportDownload(blob, fileName, 'PPT', tabName());
