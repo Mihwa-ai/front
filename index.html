@@ -630,15 +630,13 @@ body[data-tab="panel-partner"] #commonFilter{display:none}
     <div>
       <div class="sec-lbl" style="justify-content:space-between">
         <span style="display:flex;align-items:center;gap:9px"><i class="ti ti-table" aria-hidden="true" style="font-size:20px;color:#185FA5"></i>이탈위험 거래처 상세 근거</span>
-        <button style="font-size:14px;padding:4px 13px;border-radius:6px;border:1px solid var(--color-border-secondary);background:var(--color-background-secondary);color:var(--color-text-secondary);cursor:pointer;display:flex;align-items:center;gap:4px"><i class="ti ti-download" aria-hidden="true" style="font-size:16px"></i>CSV</button>
+        <button id="churnCsvBtn" type="button" style="font-size:14px;padding:4px 13px;border-radius:6px;border:1px solid var(--color-border-secondary);background:var(--color-background-secondary);color:var(--color-text-secondary);cursor:pointer;display:flex;align-items:center;gap:4px"><i class="ti ti-download" aria-hidden="true" style="font-size:16px"></i>CSV</button>
       </div>
       <div class="card">
         <table class="rt">
           <thead><tr><th style="width:122px">기관명</th><th style="width:57px">지역</th><th>마지막 구매(R)</th><th>빈도 감소(F)</th><th>금액 감소(M)</th><th style="width:62px;text-align:center">점수</th><th style="width:54px;text-align:center">등급</th><th>AI 추천</th></tr></thead>
-          <tbody>
-            <tr><td style="font-weight:500">강남연세의원</td><td class="s">서울</td><td style="color:#A32D2D">92일전</td><td style="color:#A32D2D">–62%</td><td style="color:#A32D2D">–71%</td><td style="text-align:center;font-weight:500;color:#A32D2D">92</td><td style="text-align:center"><span class="rh">H</span></td><td style="font-size:14px;color:#185FA5">쿠폰 즉시 발송</td></tr>
-            <tr><td style="font-weight:500">인천미래소아과</td><td class="s">인천</td><td style="color:#A32D2D">85일전</td><td style="color:#A32D2D">–58%</td><td style="color:#A32D2D">–64%</td><td style="text-align:center;font-weight:500;color:#A32D2D">87</td><td style="text-align:center"><span class="rh">H</span></td><td style="font-size:14px;color:#185FA5">MR 즉시 접촉</td></tr>
-            <tr><td style="font-weight:500">수원중앙의원</td><td class="s">경기</td><td style="color:#854F0B">74일전</td><td style="color:#854F0B">–38%</td><td style="color:#854F0B">–44%</td><td style="text-align:center;font-weight:500;color:#854F0B">68</td><td style="text-align:center"><span class="rm">M</span></td><td style="font-size:14px;color:#185FA5">번들 안내</td></tr>
+          <tbody id="churnRiskBody">
+            <tr><td colspan="8" style="text-align:center;color:var(--color-text-secondary);padding:20px">불러오는 중…</td></tr>
           </tbody>
         </table>
         <div style="margin-top:7px;padding:7px 11px;background:#E6F1FB;border-radius:7px;font-size:14px;color:#185FA5;display:flex;align-items:center;gap:6px"><i class="ti ti-info-circle" aria-hidden="true" style="font-size:17px;flex-shrink:0"></i>위험 점수 = Recency 40% + Frequency 35% + Monetary 25% 가중 합산</div>
@@ -2433,8 +2431,64 @@ async function loadAiInsightTab() {
   }
 }
 
-document.getElementById('panel-ai').__refresh = () => { loadAiInsightTab(); loadQualitativeContext(); };
+document.getElementById('panel-ai').__refresh = () => { loadAiInsightTab(); loadQualitativeContext(); loadChurnRiskDetail(); };
 loadAiInsightTab();
+
+// ════════ "이탈위험 거래처 상세 근거" — mart_buyer_monthly의 실제 위험점수를
+// 그대로 표로 보여주고 CSV로도 내보낼 수 있게 한다 ════════
+let churnRiskRows = [];
+
+function renderChurnRiskDetail(rows) {
+  const tbody = document.getElementById('churnRiskBody');
+  if (!tbody) return;
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--color-text-secondary);padding:20px">이탈위험 거래처가 없습니다.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.slice(0, 15).map(r => {
+    const dc = r.riskGrade === 'H' ? '#A32D2D' : '#854F0B';
+    const badgeClass = r.riskGrade === 'H' ? 'rh' : 'rm';
+    return `<tr><td style="font-weight:500">${escapeHtml(r.name)}</td><td class="s">${escapeHtml(r.region)}</td><td style="color:${dc}">${r.dormantDays}일전</td><td style="color:${dc}">–${r.freqDeclinePct}%</td><td style="color:${dc}">–${r.monetaryDeclinePct}%</td><td style="text-align:center;font-weight:500;color:${dc}">${r.riskScore}</td><td style="text-align:center"><span class="${badgeClass}">${escapeHtml(r.riskGrade)}</span></td><td style="font-size:14px;color:#185FA5">${escapeHtml(r.recommendation)}</td></tr>`;
+  }).join('');
+}
+
+async function loadChurnRiskDetail() {
+  const filters = getActiveFilters();
+  if (!filters.company) { churnRiskRows = []; renderChurnRiskDetail([]); return; }
+  try {
+    const rows = await fetchJson('/api/dashboard/churn-risk-detail', filters);
+    churnRiskRows = Array.isArray(rows) ? rows : [];
+    renderChurnRiskDetail(churnRiskRows);
+  } catch (err) {
+    console.error('이탈위험 거래처 상세 근거 로드 실패', err);
+    const tbody = document.getElementById('churnRiskBody');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--color-text-secondary);padding:20px">불러오지 못했습니다.</td></tr>';
+  }
+}
+
+function csvCellEscape(v) {
+  const s = String(v ?? '');
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
+document.getElementById('churnCsvBtn')?.addEventListener('click', () => {
+  if (!churnRiskRows.length) { alert('내보낼 데이터가 없습니다.'); return; }
+  const header = ['기관명', '지역', '마지막구매(일전)', '빈도감소(%)', '금액감소(%)', '점수', '등급', 'AI추천'];
+  const lines = [header.join(',')].concat(
+    churnRiskRows.map(r => [r.name, r.region, r.dormantDays, r.freqDeclinePct, r.monetaryDeclinePct, r.riskScore, r.riskGrade, r.recommendation].map(csvCellEscape).join(','))
+  );
+  const csvText = '﻿' + lines.join('\r\n');
+  const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  a.href = url;
+  a.download = `이탈위험_거래처_${getActiveFilters().company || '전체'}_${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+});
+
+loadChurnRiskDetail();
 
 // ════════ "추가 정보 입력"(정성 정보) — 칩/텍스트/첨부파일을 회사×기간 단위로
 // 저장하고, AI 인사이트 재생성 시 함께 반영한다 ════════
