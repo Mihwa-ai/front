@@ -1897,31 +1897,6 @@ document.getElementById('panel-buyers').__refresh = () => {
   function tableHeaderCell(text, align){
     return {text, options:{bold:true, fontSize:10, color:PC.gray, fill:{color:'F7F9FC'}, align:align||'left', fontFace:FONT}};
   }
-  function addTextCardsRow(slide, items, y, h){
-    const n=items.length, gap=0.15, w=(12.53-gap*(n-1))/n, x0=0.4;
-    items.forEach((it,i)=>{
-      const x=x0+i*(w+gap);
-      slide.addShape('roundRect', {x,y,w,h, fill:{color:'E6F1FB'}, line:{color:'B5D4F4',width:0.75}});
-      slide.addText(it.t, {x:x+0.12,y:y+0.06,w:w-0.24,h:0.3, fontSize:9.5, bold:true, color:PC.navy, fontFace:FONT});
-      slide.addText(it.b, {x:x+0.12,y:y+0.38,w:w-0.24,h:h-0.44, fontSize:9, color:PC.steel, fontFace:FONT});
-    });
-  }
-  function addKpiTiles(slide, y){
-    const tiles = Array.from(document.querySelectorAll('#commonKpi .kc')).map(kc => ({
-      label: kc.querySelector('.kl').textContent.trim(),
-      value: kc.querySelector('.kv').textContent.trim(),
-      delta: kc.querySelector('.kd').textContent.trim(),
-      up: kc.querySelector('.kd').classList.contains('ku') ? true : kc.querySelector('.kd').classList.contains('kdn') ? false : null,
-    }));
-    const n=tiles.length, gap=0.12, w=(12.53-gap*(n-1))/n, x0=0.4, h=0.95;
-    tiles.forEach((t,i)=>{
-      const x=x0+i*(w+gap);
-      slide.addShape('roundRect', {x,y,w,h, fill:{color:'F7F9FC'}, line:{color:'E4E7EC',width:0.75}});
-      slide.addText(t.label, {x,y:y+0.08,w,h:0.24, fontSize:8.5, color:PC.gray, align:'center', fontFace:FONT});
-      slide.addText(t.value, {x,y:y+0.34,w,h:0.32, fontSize:14, bold:true, color:PC.navy, align:'center', fontFace:FONT});
-      slide.addText(t.delta, {x,y:y+0.68,w,h:0.22, fontSize:9, color:t.up===true?PC.green:t.up===false?PC.red:PC.gray, align:'center', fontFace:FONT});
-    });
-  }
 
   // 발표용(월간 보고) 표지 — 내부 임원진/파트너사 PM이 첫 장에서 바로
   // "누구의, 어느 기간, 무슨 자료인지" 파악할 수 있도록 필터 요약을 그대로 노출한다.
@@ -1937,14 +1912,6 @@ document.getElementById('panel-buyers').__refresh = () => {
     return slide;
   }
 
-  // 핵심 지표를 표지 다음 장에서 바로 보여주는 히어로 슬라이드 — 화면 상단
-  // 공통 KPI 카드(#commonKpi)의 실제 값을 그대로 확대해 사용한다.
-  function addKpiHeroSlide(pptx, subtitle){
-    const slide = slideChrome(pptx, '이번 달 핵심 지표', subtitle);
-    addKpiTiles(slide, 1.4);
-    return slide;
-  }
-
   function addClosingSlide(pptx){
     const slide = pptx.addSlide();
     slide.background = { color:PC.navy };
@@ -1953,226 +1920,107 @@ document.getElementById('panel-buyers').__refresh = () => {
     return slide;
   }
 
-  function buildSalesSlides(pptx){
-    const subtitle = filterSubtitle();
+  // PDF 리포트와 동일한 설계 원칙 — 화면의 차트를 그대로 옮기지 않고, 핵심
+  // 수치만 새로 집계해 슬라이드마다 "그래픽 1개 + 한두 문장 설명"으로 구성한다.
+  // PPT 전용으로 필요한 데이터를 한 번에 모아두면 슬라이드 함수들은 순수하게
+  // 레이아웃만 담당할 수 있다.
+  async function buildReportContext(){
+    const filters = getActiveFilters();
+    const pctDelta = (curr, prev) => (!prev ? null : ((curr - prev) / prev) * 100);
+    const fmtPctR = v => (v === null || v === undefined || isNaN(v)) ? '데이터 부족' : `${v > 0 ? '+' : ''}${v.toFixed(1)}%`;
+    const deltaColor = v => (v === null || v === undefined || isNaN(v)) ? PC.gray : (v >= 0 ? PC.green : PC.red);
 
-    let slide = slideChrome(pptx, 'KPI 시계열 — 라인 차트 (전년 비교)', subtitle);
-    const kd = kpiData[activeKpi];
-    const mo = monthsToLabels(kpiData.months || []);
-    const n = kd.curr.length;
-    const prevAligned = kd.prev.slice(kd.prev.length-n);
-    const kpiFmtCode = activeKpi==='sales' ? '0.0"억"' : activeKpi==='qty' ? '#,##0"dz"' : '#,##0"개처"';
-    slide.addChart(pptx.ChartType.line, [
-      { name:'올해', labels:mo.slice(0,n), values:kd.curr },
-      { name:'전년', labels:mo.slice(0,n), values:prevAligned },
-    ], {
-      x:0.4,y:1.1,w:12.5,h:5.9,
-      chartColors:[PC.blue, PC.paleBlue], lineSize:[2.5,1.5], lineDataSymbol:'circle',
-      showLegend:true, legendPos:'t', catAxisLabelColor:PC.gray, valAxisLabelColor:PC.gray, fontFace:FONT,
-      showValue:true, dataLabelFormatCode:kpiFmtCode, dataLabelPosition:'t',
-    });
+    const [kpi, region, dept, segRes] = await Promise.all([
+      fetchJson('/api/dashboard/kpi-trend', { ...filters, months: 6 }),
+      fetchJson('/api/dashboard/region-sales', filters),
+      fetchJson('/api/dashboard/dept-sales', filters),
+      fetchJson('/api/dashboard/buyer-segments', filters),
+    ]);
+    let insight = { executiveSummary:[], cards:{}, actionItems:[] };
+    try{ insight = await fetchJson('/api/dashboard/ai-insight-tab', filters); }
+    catch(err){ console.error('PPT: AI 인사이트 로드 실패', err); }
 
-    slide = slideChrome(pptx, '매출유형 비중 — 월별 병의원 / 도매', subtitle);
-    // pptxgenjs의 showPercent는 bar 차트에는 적용되지 않아(항상 0으로 출력), 비중을 직접 계산해 showValue로 표시
-    slide.addChart(pptx.ChartType.bar, [
-      { name:'병의원(%)', labels:stData.map(d=>d.m), values:stData.map(d=>Math.round(d.clinic/(d.clinic+d.wholesale)*100)) },
-      { name:'도매(%)', labels:stData.map(d=>d.m), values:stData.map(d=>Math.round(d.wholesale/(d.clinic+d.wholesale)*100)) },
-    ], {
-      x:0.4,y:1.1,w:12.5,h:5.9, barGrouping:'stacked',
-      chartColors:[PC.blue, PC.green], showLegend:true, legendPos:'t', fontFace:FONT,
-      showValue:true, dataLabelFormatCode:'0"%"', dataLabelPosition:'ctr',
-    });
+    const lastIdx = kpi.months.length - 1, prevIdx = lastIdx - 1;
+    const salesCurr = kpi.sales.curr[lastIdx], salesMom = pctDelta(salesCurr, kpi.sales.curr[prevIdx]), salesYoy = pctDelta(salesCurr, kpi.sales.prev[lastIdx]);
+    const qtyCurr = kpi.qty.curr[lastIdx], qtyMom = pctDelta(qtyCurr, kpi.qty.curr[prevIdx]);
+    const buyerCurr = kpi.buyer.curr[lastIdx], buyerMom = pctDelta(buyerCurr, kpi.buyer.curr[prevIdx]);
+    const churn = (segRes.segments || []).find(s => s.seg === '이탈위험') || null;
 
-    slide = slideChrome(pptx, '지역별 분포 · 진료과별 (병의원)', subtitle);
-    slide.addChart(pptx.ChartType.bar, [
-      { name:'지역별 매출(억)', labels:regionData.map(r=>r.region), values:regionData.map(r=>parseFloat(r.amount)) },
-    ], { x:0.4,y:1.1,w:6.0,h:5.9, barDir:'bar', chartColors:[PC.blue], showLegend:false, showTitle:true, title:'지역별 분포', fontFace:FONT, showValue:true, dataLabelFormatCode:'0.0"억"' });
-    slide.addChart(pptx.ChartType.bar, [
-      { name:'진료과별 매출(억)', labels:deptData.map(d=>d.dept), values:deptData.map(d=>parseFloat(d.amount)) },
-    ], { x:6.7,y:1.1,w:6.0,h:5.9, barDir:'bar', chartColors:[PC.green], showLegend:false, showTitle:true, title:'진료과별 (병의원)', fontFace:FONT, showValue:true, dataLabelFormatCode:'0.0"억"' });
-
-    slide = slideChrome(pptx, '당월 신규 구매처', subtitle);
-    slide.addText([
-      { text:String(newBuyerData.total), options:{ fontSize:36, bold:true, color:PC.navy } },
-      { text:' ▲'+newBuyerData.delta, options:{ fontSize:16, color:PC.green } },
-    ], { x:0.4,y:1.1,w:5,h:0.9, fontFace:FONT });
-    slide.addText('전월 대비', { x:0.4,y:1.95,w:4,h:0.3, fontSize:10, color:PC.gray, fontFace:FONT });
-    slide.addChart(pptx.ChartType.bar, [
-      { name:'신규 구매처', labels:newBuyerData.monthly.map((m,i,arr)=> i===arr.length-1 ? '이번달' : m.month.slice(5)+'월'), values:newBuyerData.monthly.map(m=>m.h) },
-    ], { x:0.4,y:2.4,w:5.6,h:4.3, chartColors:[PC.blue], showLegend:false, fontFace:FONT, showValue:true });
-    slide.addText('신규처 Top 10', { x:6.6,y:1.1,w:6,h:0.3, fontSize:12, bold:true, color:PC.navy, fontFace:FONT });
-    slide.addText(newBuyerData.top5.map((b,i)=>`${i+1}. ${b.name} · ${b.dept}`).join('\n'),
-      { x:6.6,y:1.6,w:6.3,h:4.8, fontSize:11, color:PC.text, fontFace:FONT, lineSpacing:18 });
+    return {
+      filters, pctDelta, fmtPctR, deltaColor,
+      periodLabel: document.getElementById('fltPeriod')?.value || monthsToLabels([kpi.months[lastIdx]])[0],
+      months: monthsToLabels(kpi.months.slice(-6)),
+      salesTrend: kpi.sales.curr.slice(-6),
+      salesCurr, salesMom, salesYoy, qtyCurr, qtyMom, buyerCurr, buyerMom,
+      region: region || [], dept: dept || [],
+      segments: segRes.segments || [], churn,
+      insight,
+    };
   }
 
-  function buildBuyersSlides(pptx){
-    const subtitle = filterSubtitle();
+  const SEG_COLORS = { 충성:PC.green, 일반:PC.blue, 단발:PC.gray, 관심:PC.amber, 이탈위험:PC.red };
 
-    let slide = slideChrome(pptx, '구매처 월별 추이 — 신규 / 재구매 / 휴면', subtitle);
-    const td = tD[tM];
-    slide.addChart(pptx.ChartType.line, [
-      { name:'신규', labels:td.lb, values:td.n },
-      { name:'재구매', labels:td.lb, values:td.r },
-      { name:'휴면', labels:td.lb, values:td.d },
-    ], {
-      x:0.4,y:1.1,w:12.5,h:5.9,
-      chartColors:[PC.blue, PC.green, PC.gray], lineSize:[2,2,1.5],
-      showLegend:true, legendPos:'t', catAxisLabelColor:PC.gray, valAxisLabelColor:PC.gray, fontFace:FONT,
-      showValue:true, dataLabelPosition:'t',
-    });
-
-    slide = slideChrome(pptx, 'RFM 세그먼트', subtitle);
-    // 막대 폭이 좁은 세그먼트는 막대 안에 글자를 넣으면 안 보이므로, 수치는
-    // 막대 밖 고정 위치에 항상 잘 보이는 색(textColor)으로 표시한다.
-    const y0=1.3, rh=0.72, gap=0.14, barX=2.1, barMaxW=7.0, valX=barX+barMaxW+0.15, valW=1.3, trendX=valX+valW+0.15;
-    rfmData.forEach((r,i)=>{
-      const y=y0+i*(rh+gap);
-      slide.addText(r.seg, { x:0.4,y,w:1.6,h:rh, fontSize:12, bold:true, color:r.textColor, fontFace:FONT, valign:'middle' });
-      const w = Math.max(barMaxW*(r.width/100), 0.1);
-      slide.addShape('roundRect', { x:barX,y:y+0.1,w,h:rh-0.2, fill:{color:r.barColor}, line:{type:'none'} });
-      slide.addText(`${r.count}명 (${r.pct}%)`, { x:valX,y,w:valW,h:rh, fontSize:11, bold:true, color:r.textColor, fontFace:FONT, valign:'middle' });
-      slide.addText(r.trend, { x:trendX,y,w:1,h:rh, fontSize:11, bold:!!r.trendBold, color:r.trendColor, fontFace:FONT, valign:'middle' });
-    });
-    const churn = rfmData.find(r=>r.seg==='이탈위험');
-    const alertY = y0+rfmData.length*(rh+gap)+0.1;
-    slide.addShape('roundRect', { x:0.4,y:alertY,w:10.8,h:0.5, fill:{color:'FCEBEB'}, line:{type:'none'} });
-    slide.addText(`이탈위험 전월 대비 ${churn.trend.replace('▲','+')}명 급증`, { x:0.6,y:alertY,w:10.4,h:0.5, fontSize:11, color:PC.darkRed, fontFace:FONT, valign:'middle' });
-
-    slide = slideChrome(pptx, '구매 패턴 히트맵 — 세그먼트별 월평균 구매 빈도', subtitle);
-    const lbs = hL[hM];
-    const heatRows = [
-      [tableHeaderCell('세그먼트','center'), tableHeaderCell('거래처수','center'), ...lbs.map(l=>tableHeaderCell(l,'center'))],
-      ...hS.map(seg => {
-        const vals = hM==='6' ? seg.v6 : seg.v12;
-        return [
-          { text:seg.lb, options:{ bold:true, fontSize:10, color:seg.co, fill:{color:seg.bg}, align:'center', fontFace:FONT } },
-          { text:String(hCnt[seg.lb]), options:{ fontSize:10, align:'center', fontFace:FONT } },
-          ...vals.map(v => ({
-            text: v>0 ? v+'회' : '–',
-            options: { fontSize:9.5, align:'center', fontFace:FONT, fill:{color:CC[v]}, color: v>=3?'FFFFFF':PC.steel },
-          })),
-        ];
-      }),
+  function addKpiSlide(pptx, subtitle, ctx){
+    const slide = slideChrome(pptx, '핵심 지표 요약', subtitle);
+    const tiles = [
+      { label:'매출', value:`${ctx.salesCurr.toFixed(2)}억`, delta:`전월비 ${ctx.fmtPctR(ctx.salesMom)}`, color:ctx.deltaColor(ctx.salesMom) },
+      { label:'판매수량', value:`${Math.round(ctx.qtyCurr).toLocaleString()}dz`, delta:`전월비 ${ctx.fmtPctR(ctx.qtyMom)}`, color:ctx.deltaColor(ctx.qtyMom) },
+      { label:'구매처수', value:`${Math.round(ctx.buyerCurr).toLocaleString()}개처`, delta:`전월비 ${ctx.fmtPctR(ctx.buyerMom)}`, color:ctx.deltaColor(ctx.buyerMom) },
     ];
-    slide.addTable(heatRows, { x:0.4,y:1.15,w:12.5,h:4.3, border:{type:'solid',color:'E4E7EC',pt:0.5} });
-    slide.addText('구매 빈도: 옅은 색(미구매/낮음) → 진한 색(높음), 점선 테두리는 이탈 신호',
-      { x:0.4,y:5.7,w:12.5,h:0.3, fontSize:9, color:PC.gray, fontFace:FONT });
-
-    slide = slideChrome(pptx, '구매 퍼널 전환율 (예시 지표)', subtitle);
-    const fx0=0.4, fBarMaxW=4.6, fy0=1.2, frh=0.55, fgap=0.3;
-    funnelData.forEach((f,i)=>{
-      const y=fy0+i*(frh+fgap);
-      slide.addText(f.step, { x:fx0,y,w:1.3,h:frh, fontSize:10, color:PC.gray, align:'right', fontFace:FONT, valign:'middle' });
-      const w = Math.max(fBarMaxW*(f.widthPct/100), 0.35);
-      slide.addShape('roundRect', { x:fx0+1.4,y:y+0.04,w,h:frh-0.08, fill:{color:f.color}, line:{type:'none'} });
-      if(f.amountLabel) slide.addText(f.amountLabel, { x:fx0+1.5,y:y+0.04,w:Math.max(w-0.2,0.4),h:frh-0.08, fontSize:9, color:f.textColor||'FFFFFF', fontFace:FONT, valign:'middle' });
-      if(f.conv){
-        const convText = f.conv.type==='ok' ? `↓ ${f.conv.rate}` : `↓ ${f.conv.rate}  ${f.conv.delta}`;
-        slide.addText(convText, { x:fx0+1.4,y:y+frh,w:2.6,h:fgap, fontSize:9, bold:f.conv.type!=='ok', color:f.conv.type==='ok'?PC.steel:PC.red, fontFace:FONT });
-      }
+    const tw=3.9, th=1.5, gap=0.25, tx0=0.4, ty0=1.15;
+    tiles.forEach((t,i)=>{
+      const x=tx0+i*(tw+gap);
+      slide.addShape('roundRect', { x,y:ty0,w:tw,h:th, fill:{color:'F7F9FC'}, line:{color:'E4E7EC',width:0.75} });
+      slide.addText(t.label, { x:x+0.25,y:ty0+0.18,w:tw-0.5,h:0.3, fontSize:11, color:PC.gray, fontFace:FONT });
+      slide.addText(t.value, { x:x+0.25,y:ty0+0.48,w:tw-0.5,h:0.6, fontSize:26, bold:true, color:PC.navy, fontFace:FONT });
+      slide.addText(t.delta, { x:x+0.25,y:ty0+1.08,w:tw-0.5,h:0.32, fontSize:12, color:t.color, fontFace:FONT });
     });
-    const bottleneck = funnelData.find(f=>f.conv && f.conv.type==='bad');
-    const botY = fy0+funnelData.length*(frh+fgap)+0.05;
-    slide.addShape('roundRect', { x:fx0,y:botY,w:6.2,h:0.42, fill:{color:'FCEBEB'}, line:{type:'none'} });
-    slide.addText(`장바구니→결제 전환율 ${bottleneck.conv.delta.replace('▼','')} 하락 병목 감지`,
-      { x:fx0+0.15,y:botY,w:5.9,h:0.42, fontSize:9.5, color:PC.darkRed, fontFace:FONT, valign:'middle' });
 
-    slide.addText('전환율 시계열 추이', { x:7.3,y:1.1,w:5,h:0.3, fontSize:10, color:PC.gray, fontFace:FONT });
+    slide.addText('최근 6개월 매출 추이(억)', { x:0.4,y:3.0,w:5,h:0.3, fontSize:10, color:PC.gray, fontFace:FONT });
     slide.addChart(pptx.ChartType.line, [
-      { name:'장바구니→결제', labels:cvData.mos, values:cvData.cart },
-      { name:'검색→조회', labels:cvData.mos, values:cvData.srch },
-    ], { x:7.2,y:1.4,w:5.6,h:4.6, chartColors:[PC.red, PC.paleBlue], lineSize:[2,1.5], showLegend:true, legendPos:'b', fontFace:FONT, showValue:true, dataLabelFormatCode:'0.0"%"' });
-    slide.addText('구매 퍼널(검색→조회→장바구니→결제) 로그는 아직 연동되지 않아 예시 값입니다.',
-      { x:7.2,y:6.05,w:5.6,h:0.35, fontSize:8.5, color:PC.steel, italic:true, fontFace:FONT });
-  }
+      { name:'매출(억)', labels:ctx.months, values:ctx.salesTrend },
+    ], { x:0.4,y:3.35,w:12.5,h:2.9, chartColors:[PC.blue], lineSize:2.5, lineDataSymbol:'circle', showLegend:false, catAxisLabelColor:PC.gray, valAxisLabelColor:PC.gray, fontFace:FONT, showValue:true, dataLabelFormatCode:'0.0"억"', dataLabelPosition:'t' });
 
-  // 병목 제품/연관 구매 상품은 화면과 동일하게 "제품명은 실제, 검색량·전환율은 예시"
-  // 정책을 그대로 따른다 — DOM에 이미 그려진 결과를 재사용하지 않고, 어느 탭에서
-  // PPT를 내보내든 최신 상태이도록 이 시점에 직접 다시 계산한다.
-  async function addFunnelBottleneckSlide(pptx, subtitle){
-    await regenerateBottleneckProducts();
-    await regenerateAssociatedProducts();
-
-    const slide = slideChrome(pptx, '병목 제품 · 연관 구매 (예시 지표)', subtitle);
-    const bnRows = [...document.querySelectorAll('#bottleneckProductBody tr')]
-      .map(tr => [...tr.querySelectorAll('td')].map(td => td.textContent))
-      .filter(cols => cols.length >= 3);
-
-    if(bnRows.length){
-      slide.addTable([
-        [tableHeaderCell('제품명'), tableHeaderCell('검색','right'), tableHeaderCell('전환율','right')],
-        ...bnRows.map(r => [
-          { text:r[0], options:{ fontSize:9.5, fontFace:FONT } },
-          { text:r[1], options:{ fontSize:9.5, align:'right', color:PC.gray, fontFace:FONT } },
-          { text:r[2], options:{ fontSize:9.5, align:'right', fontFace:FONT } },
-        ]),
-      ], { x:0.4,y:1.1,w:6.2,h:1.8, border:{type:'solid',color:'E4E7EC',pt:0.5} });
-    }else{
-      slide.addText('데이터를 불러오지 못했습니다.', { x:0.4,y:1.3,w:6.2,h:0.5, fontSize:11, color:PC.gray, fontFace:FONT });
-    }
-    slide.addText('제품명은 조회 중인 회사의 실제 제품이며, 검색량·전환율은 구매 퍼널 로그 미연동으로 예시 값입니다.',
-      { x:0.4,y:2.95,w:6.2,h:0.5, fontSize:8.5, color:PC.steel, italic:true, fontFace:FONT });
-
-    slide.addText('연관 구매 상품 Top 3 (예시)', { x:0.4,y:3.6,w:6.2,h:0.3, fontSize:11, bold:true, color:PC.navy, fontFace:FONT });
-    const assocRows = [...document.querySelectorAll('#assocProductBody .arow')]
-      .map(row => [...row.querySelectorAll('span')].map(s => s.textContent))
-      .filter(cols => cols.length >= 2);
-    if(assocRows.length){
-      assocRows.forEach((t,i)=>{
-        slide.addText([
-          { text:t[0], options:{ color:PC.text } },
-          { text:'   '+t[1], options:{ color:PC.steel, bold:true } },
-        ], { x:0.4,y:4.0+i*0.4,w:6.2,h:0.35, fontSize:9.5, fontFace:FONT });
-      });
-    }else{
-      slide.addText('데이터를 불러오지 못했습니다.', { x:0.4,y:4.0,w:6.2,h:0.4, fontSize:10, color:PC.gray, fontFace:FONT });
-    }
+    slide.addShape('roundRect', { x:0.4,y:6.45,w:12.5,h:0.65, fill:{color:'E6F1FB'}, line:{type:'none'} });
+    slide.addText(`매출은 전월 대비 ${ctx.fmtPctR(ctx.salesMom)}, 전년동월 대비 ${ctx.fmtPctR(ctx.salesYoy)} 변화했습니다. 판매수량 ${ctx.fmtPctR(ctx.qtyMom)}, 구매처수 ${ctx.fmtPctR(ctx.buyerMom)}(전월비)로 함께 움직였습니다.`,
+      { x:0.6,y:6.45,w:12.1,h:0.65, fontSize:10.5, color:PC.navy, fontFace:FONT, valign:'middle' });
     return slide;
   }
 
-  // AI 인사이트는 화면(#panel-ai)이 이미 사용 중인 것과 동일한 실 데이터 API를
-  // 그대로 다시 호출해 구성한다 — product/competitor 카드는 근거 데이터가 없어
-  // 항상 hasData=false로 오므로, 지어낸 수치 대신 미연동 안내만 짧게 덧붙인다.
-  async function buildAiSlides(pptx){
-    const subtitle = filterSubtitle();
-    const filters = getActiveFilters();
-
-    let insight = { executiveSummary:[], cards:{}, actionItems:[] };
-    let buyerAnalysis = { churnRisk:{hasData:false,body:''}, actionRecommendation:{hasData:false,body:''} };
-    try{ insight = await fetchJson('/api/dashboard/ai-insight-tab', filters); }
-    catch(err){ console.error('PPT: AI 인사이트 탭 로드 실패', err); }
-    try{ buyerAnalysis = await fetchJson('/api/dashboard/buyer-analysis-summary', filters); }
-    catch(err){ console.error('PPT: 구매처 분석 AI 요약 로드 실패', err); }
-
-    let slide = slideChrome(pptx, 'AI 인사이트 — Executive Summary', subtitle);
-    const execLines = (insight.executiveSummary || []).filter(Boolean);
-    if(execLines.length){
+  function addAiSummarySlide(pptx, subtitle, ctx){
+    const slide = slideChrome(pptx, 'AI 분석 요약', subtitle);
+    const lines = (ctx.insight.executiveSummary || []).filter(Boolean);
+    if(lines.length){
       const arrows = [{a:'↑',c:PC.green},{a:'↓',c:PC.red},{a:'→',c:PC.amber}];
-      execLines.forEach((text,i)=>{
+      lines.forEach((text,i)=>{
         const ar = arrows[i] || arrows[arrows.length-1];
+        slide.addShape('roundRect', { x:0.4,y:1.2+i*1.8,w:12.5,h:1.55, fill:{color:'F7F9FC'}, line:{color:'E4E7EC',width:0.75} });
         slide.addText([
-          { text:ar.a+'  ', options:{ color:ar.c, bold:true, fontSize:16 } },
-          { text, options:{ color:PC.navy, fontSize:13 } },
-        ], { x:0.4,y:1.2+i*1.6,w:12.5,h:1.5, fontFace:FONT, valign:'top' });
+          { text:ar.a+'  ', options:{ color:ar.c, bold:true, fontSize:18 } },
+          { text, options:{ color:PC.navy, fontSize:13.5 } },
+        ], { x:0.65,y:1.35+i*1.8,w:12,h:1.25, fontFace:FONT, valign:'middle' });
       });
     }else{
       slide.addText('데이터가 부족하여 요약을 생성하지 못했습니다.', { x:0.4,y:1.2,w:12.5,h:0.5, fontSize:12, color:PC.gray, fontFace:FONT });
     }
+    return slide;
+  }
 
+  function addAiCardsSlide(pptx, subtitle, ctx){
     const CARD_META = {
       growth:   { type:'Growth',   color:PC.green,  bg:'EAF3DE', textColor:'27500A' },
       risk:     { type:'Risk',     color:PC.red,    bg:'FCEBEB', textColor:'791F1F' },
       customer: { type:'Customer', color:PC.blue,   bg:'E6F1FB', textColor:PC.navy },
       channel:  { type:'Channel',  color:PC.purple, bg:'EEEDFE', textColor:'3C3489' },
     };
-    slide = slideChrome(pptx, 'AI 인사이트 카드', subtitle);
+    const slide = slideChrome(pptx, 'AI 인사이트 카드', subtitle);
     const cardW=6.15, cardH=2.6, gapX=0.2, cgapY=0.2, gx0=0.4, gy0=1.15;
     Object.keys(CARD_META).forEach((key,i)=>{
       const meta = CARD_META[key];
-      const card = (insight.cards && insight.cards[key]) || { hasData:false, body:'', action:'' };
+      const card = (ctx.insight.cards && ctx.insight.cards[key]) || { hasData:false, body:'', action:'' };
       const col=i%2, row=Math.floor(i/2);
       const x=gx0+col*(cardW+gapX), y=gy0+row*(cardH+cgapY);
-      const body = card.hasData ? card.body : (card.body || '데이터가 부족하여 분석할 수 없습니다.');
+      const body = card.body || '데이터가 부족하여 분석할 수 없습니다.';
       slide.addShape('rect', { x,y,w:0.06,h:cardH, fill:{color:meta.color}, line:{type:'none'} });
       slide.addShape('roundRect', { x:x+0.06,y,w:cardW-0.06,h:cardH, fill:{color:'FFFFFF'}, line:{color:'E4E7EC',width:0.75} });
       slide.addShape('roundRect', { x:x+0.25,y:y+0.2,w:1.8,h:0.35, fill:{color:meta.bg}, line:{type:'none'} });
@@ -2184,9 +2032,57 @@ document.getElementById('panel-buyers').__refresh = () => {
     });
     slide.addText('제품별(개별 품목)·경쟁품 시장점유율 데이터는 아직 연동되지 않아 이번 리포트에서는 제외했습니다.',
       { x:0.4,y:gy0+2*cardH+cgapY+0.1,w:12.5,h:0.35, fontSize:8.5, italic:true, color:PC.gray, fontFace:FONT });
+    return slide;
+  }
 
-    slide = slideChrome(pptx, '추천 실행과제', subtitle);
-    const items = (insight.actionItems || []).filter(it => it && it.text);
+  function addRegionDeptSlide(pptx, subtitle, ctx){
+    const slide = slideChrome(pptx, '지역 · 진료과별 매출 Top 3', subtitle);
+    const top3 = arr => (arr || []).slice(0,3);
+    const regionTop = top3(ctx.region), deptTop = top3(ctx.dept);
+    slide.addChart(pptx.ChartType.bar, [
+      { name:'지역별 매출(억)', labels:regionTop.map(r=>r.region), values:regionTop.map(r=>parseFloat(r.amount)) },
+    ], { x:0.4,y:1.15,w:6.0,h:4.6, barDir:'bar', chartColors:[PC.blue], showLegend:false, showTitle:true, title:'지역 Top 3', fontFace:FONT, showValue:true, dataLabelFormatCode:'0.0"억"' });
+    slide.addChart(pptx.ChartType.bar, [
+      { name:'진료과별 매출(억)', labels:deptTop.map(d=>d.dept), values:deptTop.map(d=>parseFloat(d.amount)) },
+    ], { x:6.7,y:1.15,w:6.0,h:4.6, barDir:'bar', chartColors:[PC.green], showLegend:false, showTitle:true, title:'진료과 Top 3', fontFace:FONT, showValue:true, dataLabelFormatCode:'0.0"억"' });
+
+    const r1 = regionTop[0], d1 = deptTop[0];
+    slide.addShape('roundRect', { x:0.4,y:6.0,w:12.5,h:0.9, fill:{color:'E6F1FB'}, line:{type:'none'} });
+    const caption = (r1 && d1)
+      ? `매출 1위 지역은 ${r1.region}(${r1.amount.toFixed(2)}억), 1위 진료과는 ${d1.dept}(${d1.amount.toFixed(2)}억)입니다.`
+      : '데이터가 부족합니다.';
+    slide.addText(caption, { x:0.6,y:6.0,w:12.1,h:0.9, fontSize:11, color:PC.navy, fontFace:FONT, valign:'middle' });
+    return slide;
+  }
+
+  function addSegmentSlide(pptx, subtitle, ctx){
+    const slide = slideChrome(pptx, '구매처 세그먼트 현황', subtitle);
+    const segs = ctx.segments;
+    const maxCount = Math.max(1, ...segs.map(s=>s.count));
+    const y0=1.2, rh=0.75, gap=0.2, barX=2.2, barMaxW=7.5;
+    segs.forEach((s,i)=>{
+      const y=y0+i*(rh+gap);
+      const color = SEG_COLORS[s.seg] || PC.steel;
+      slide.addText(s.seg, { x:0.4,y,w:1.7,h:rh, fontSize:12, bold:true, color, fontFace:FONT, valign:'middle' });
+      const w = Math.max(barMaxW*(s.count/maxCount), 0.1);
+      slide.addShape('roundRect', { x:barX,y:y+0.12,w,h:rh-0.24, fill:{color}, line:{type:'none'} });
+      slide.addText(`${s.count}곳`, { x:barX+w+0.15,y,w:1.3,h:rh, fontSize:11, bold:true, color:PC.text, fontFace:FONT, valign:'middle' });
+      const dColor = s.deltaCount > 0 ? PC.red : (s.deltaCount < 0 ? PC.green : PC.gray);
+      slide.addText(`${s.deltaCount >= 0 ? '+' : ''}${s.deltaCount}`, { x:barX+w+1.5,y,w:1,h:rh, fontSize:11, color: s.seg==='이탈위험' ? dColor : PC.gray, fontFace:FONT, valign:'middle' });
+    });
+
+    const capY = y0+segs.length*(rh+gap)+0.15;
+    slide.addShape('roundRect', { x:0.4,y:capY,w:12.5,h:0.7, fill:{color: ctx.churn && ctx.churn.deltaCount > 0 ? 'FCEBEB' : 'E6F1FB'}, line:{type:'none'} });
+    const caption = ctx.churn
+      ? `이탈위험 거래처는 ${ctx.churn.count}곳으로 전월 대비 ${ctx.churn.deltaCount >= 0 ? '+' : ''}${ctx.churn.deltaCount}곳 ${ctx.churn.deltaCount > 0 ? '증가했습니다.' : ctx.churn.deltaCount < 0 ? '감소했습니다.' : '변동이 없습니다.'}`
+      : '이탈위험 세그먼트 데이터가 부족합니다.';
+    slide.addText(caption, { x:0.6,y:capY,w:12.1,h:0.7, fontSize:11, color: ctx.churn && ctx.churn.deltaCount > 0 ? PC.darkRed : PC.navy, fontFace:FONT, valign:'middle' });
+    return slide;
+  }
+
+  function addActionItemsSlide(pptx, subtitle, ctx){
+    const slide = slideChrome(pptx, '추천 실행과제', subtitle);
+    const items = (ctx.insight.actionItems || []).filter(it => it && it.text);
     if(items.length){
       const rowColors = [PC.green, PC.blue, PC.amber, PC.steel, PC.purple];
       items.forEach((a,i)=>{
@@ -2200,22 +2096,7 @@ document.getElementById('panel-buyers').__refresh = () => {
     }else{
       slide.addText('추천 실행과제를 생성하지 못했습니다.', { x:0.4,y:1.2,w:12.5,h:0.5, fontSize:12, color:PC.gray, fontFace:FONT });
     }
-
-    slide = slideChrome(pptx, '구매처 이탈 리스크 & 실행 제안', subtitle);
-    const churn = rfmData.find(r=>r.seg==='이탈위험');
-    if(churn){
-      slide.addText(String(churn.count), { x:0.4,y:1.2,w:3,h:1.1, fontSize:44, bold:true, color:PC.red, fontFace:FONT });
-      slide.addText('이탈위험 거래처 (명)', { x:0.4,y:2.25,w:3,h:0.3, fontSize:10, color:PC.gray, fontFace:FONT });
-      slide.addText(churn.trend, { x:0.4,y:2.6,w:3,h:0.4, fontSize:13, bold:!!churn.trendBold, color:churn.trendColor, fontFace:FONT });
-    }
-    const cr = buyerAnalysis.churnRisk || { hasData:false, body:'' };
-    const ar = buyerAnalysis.actionRecommendation || { hasData:false, body:'' };
-    slide.addShape('roundRect', { x:3.9,y:1.2,w:8.9,h:2.0, fill:{color:'FCEBEB'}, line:{type:'none'} });
-    slide.addText('이탈 리스크 AI 요약', { x:4.1,y:1.35,w:8.5,h:0.3, fontSize:10, bold:true, color:PC.darkRed, fontFace:FONT });
-    slide.addText(cr.body || '데이터가 부족하여 분석할 수 없습니다.', { x:4.1,y:1.7,w:8.5,h:1.4, fontSize:11.5, color:PC.text, fontFace:FONT, valign:'top' });
-    slide.addShape('roundRect', { x:3.9,y:3.35,w:8.9,h:2.0, fill:{color:'E6F1FB'}, line:{type:'none'} });
-    slide.addText('추천 실행 제안', { x:4.1,y:3.5,w:8.5,h:0.3, fontSize:10, bold:true, color:PC.navy, fontFace:FONT });
-    slide.addText(ar.body || '데이터가 부족하여 분석할 수 없습니다.', { x:4.1,y:3.85,w:8.5,h:1.4, fontSize:11.5, color:PC.text, fontFace:FONT, valign:'top' });
+    return slide;
   }
 
   // 내보내기 버튼이 여러 API 호출(및 PPT 빌드) 동안 아무 반응이 없어 보이던 것을
@@ -2237,28 +2118,26 @@ document.getElementById('panel-buyers').__refresh = () => {
     }
   }
 
-  // PPT는 PDF(파트너 공유용 전략 문서)와 달리 발표 자료 성격이므로, 현재 보고
-  // 있는 탭 하나만이 아니라 매출·구매처·AI 인사이트를 한 번에 아우르는 단일
-  // 월간 보고 덱을 항상 만든다 — 내부 임원진 보고/파트너사 PM 발표 겸용.
+  // PDF와 동일한 설계 원칙(화면을 그대로 옮기지 않고 핵심 수치만 새로 뽑아
+  // 그래픽+짧은 설명으로 재구성)을 PPT에도 적용한다 — 편집 없이 바로 파트너사에
+  // 발송하거나 임원진 앞에서 발표할 수 있는 완결된 소수의 슬라이드로 구성.
   async function exportPptx(){
     setExportLoading(true, 'PPT 생성 중…');
     try{
       await ensurePptLibs();
-      // PPT는 매출·구매처 데이터를 함께 다루는 통합 덱이라, 지금 보고 있는 탭과
-      // 무관하게 두 탭의 실데이터를 여기서 직접 새로고침해 최신 필터 기준으로 맞춘다
-      // (탭을 열어본 적 없으면 페이지 로드 시점의 이전 필터 값이 남아있을 수 있음).
-      await Promise.all([loadDashboardData(), loadBuyerData()]);
+      const ctx = await buildReportContext();
 
       const pptx = new PptxGenJS();
       pptx.defineLayout({name:'W', width:13.33, height:7.5}); pptx.layout = 'W';
       const subtitle = filterSubtitle();
 
       addCoverSlide(pptx);
-      addKpiHeroSlide(pptx, subtitle);
-      buildSalesSlides(pptx);
-      buildBuyersSlides(pptx);
-      await addFunnelBottleneckSlide(pptx, subtitle);
-      await buildAiSlides(pptx);
+      addKpiSlide(pptx, subtitle, ctx);
+      addAiSummarySlide(pptx, subtitle, ctx);
+      addAiCardsSlide(pptx, subtitle, ctx);
+      addRegionDeptSlide(pptx, subtitle, ctx);
+      addSegmentSlide(pptx, subtitle, ctx);
+      addActionItemsSlide(pptx, subtitle, ctx);
       addClosingSlide(pptx);
 
       const fileName = `블루팜코리아_월간보고_${stamp()}.pptx`;
