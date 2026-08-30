@@ -208,8 +208,10 @@ body[data-tab="panel-partner"] #commonFilter{display:none}
   .rt th{padding:7px 9px;color:var(--color-text-secondary);font-size:14px;font-weight:400;border-bottom:1px solid var(--color-border-tertiary);text-align:left}
   .rt td{padding:7px 9px;border-bottom:1px solid var(--color-border-tertiary)}
   .rt tr:last-child td{border-bottom:none}
-  .chip{display:inline-flex;align-items:center;gap:7px;padding:6px 16px;border-radius:28px;border:1px solid var(--color-border-secondary);font-size:16px;color:var(--color-text-secondary);background:var(--color-background-secondary)}
-  .chip-ext{display:inline-flex;align-items:center;gap:7px;padding:6px 16px;border-radius:28px;border:1px solid #FAC775;font-size:16px;color:#633806;background:#FEF9E7}
+  .chip{display:inline-flex;align-items:center;gap:7px;padding:6px 16px;border-radius:28px;border:1px solid var(--color-border-secondary);font-size:16px;color:var(--color-text-secondary);background:var(--color-background-secondary);cursor:pointer;user-select:none}
+  .chip.on{border-color:#185FA5;background:#E6F1FB;color:#0C447C;font-weight:500}
+  .chip-ext{display:inline-flex;align-items:center;gap:7px;padding:6px 16px;border-radius:28px;border:1px solid #FAC775;font-size:16px;color:#633806;background:#FEF9E7;cursor:pointer;user-select:none}
+  .chip-ext.on{border-color:#854F0B;background:#FAC775;color:#3D2200;font-weight:500}
   .src-tag{display:inline-flex;align-items:center;gap:4px;padding:1px 10px;border-radius:6px;font-size:14px;font-weight:500}
   .src-iqvia{background:#EAF3DE;color:#27500A}
   .src-sims{background:#E6F1FB;color:#0C447C}
@@ -674,7 +676,8 @@ body[data-tab="panel-partner"] #commonFilter{display:none}
         </div>
 
         <div style="display:flex;align-items:center;gap:11px;margin-bottom:8px;padding:10px 14px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);flex-wrap:wrap">
-          <button style="display:inline-flex;align-items:center;gap:7px;padding:7px 17px;border-radius:var(--border-radius-md);border:1px solid var(--color-border-info);background:var(--color-background-info);color:var(--color-text-info);font-size:16px;cursor:pointer;white-space:nowrap">
+          <input type="file" id="qualFileInput" accept=".xlsb,.xlsx,.pdf,.png,.jpg,.jpeg,.docx" style="display:none">
+          <button id="qualFileBtn" type="button" style="display:inline-flex;align-items:center;gap:7px;padding:7px 17px;border-radius:var(--border-radius-md);border:1px solid var(--color-border-info);background:var(--color-background-info);color:var(--color-text-info);font-size:16px;cursor:pointer;white-space:nowrap">
             <i class="ti ti-paperclip" aria-hidden="true" style="font-size:18px"></i>파일 첨부
           </button>
           <span class="s">지원 파일:</span>
@@ -682,21 +685,20 @@ body[data-tab="panel-partner"] #commonFilter{display:none}
           <span class="src-tag src-sims">출고 데이터 .xlsx</span>
           <span class="src-tag src-gov">시장조사 .pdf</span>
           <span style="font-size:14px;color:var(--color-text-secondary)">.png · .jpg · .docx</span>
+          <span id="qualFileName" style="font-size:14px;color:#185FA5;font-weight:500"></span>
           <span style="font-size:14px;color:var(--color-text-secondary);margin-left:auto">최대 10MB</span>
         </div>
 
         <div style="display:flex;gap:10px;align-items:flex-end">
-          <div style="flex:1;border:1px solid var(--color-border-secondary);border-radius:var(--border-radius-md);padding:11px 16px;min-height:68px;font-size:16px;line-height:1.5;color:var(--color-text-secondary)">
-            예) 프리오릭스 국가출하승인 X월 통과 — 도매 채널 일부 공급 시작 예정...
-          </div>
-          <button style="background:#1B4F8A;color:#fff;border:none;border-radius:var(--border-radius-md);padding:11px 20px;font-size:16px;cursor:pointer;display:flex;align-items:center;gap:7px;white-space:nowrap;min-height:51px;align-self:flex-end">
+          <textarea id="qualNote" placeholder="예) 프리오릭스 국가출하승인 X월 통과 — 도매 채널 일부 공급 시작 예정..." style="flex:1;border:1px solid var(--color-border-secondary);border-radius:var(--border-radius-md);padding:11px 16px;min-height:68px;font-size:16px;line-height:1.5;color:var(--color-text-primary);font-family:inherit;resize:vertical;box-sizing:border-box"></textarea>
+          <button id="qualSubmitBtn" type="button" style="background:#1B4F8A;color:#fff;border:none;border-radius:var(--border-radius-md);padding:11px 20px;font-size:16px;cursor:pointer;display:flex;align-items:center;gap:7px;white-space:nowrap;min-height:51px;align-self:flex-end">
             <i class="ti ti-send" aria-hidden="true" style="font-size:18px"></i>인사이트에 반영
           </button>
         </div>
 
         <div style="margin-top:7px;padding:7px 14px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);font-size:14px;color:var(--color-text-secondary);display:flex;align-items:center;gap:6px">
           <i class="ti ti-info-circle" aria-hidden="true" style="font-size:17px;flex-shrink:0"></i>
-          입력한 내용은 현재 필터의 판매 데이터와 결합되어 위 인사이트 카드와 추천 실행과제를 업데이트합니다.
+          <span id="qualStatusText">입력한 내용은 현재 필터의 판매 데이터와 결합되어 위 인사이트 카드와 추천 실행과제를 업데이트합니다.</span>
         </div>
       </div>
     </div>
@@ -2431,8 +2433,108 @@ async function loadAiInsightTab() {
   }
 }
 
-document.getElementById('panel-ai').__refresh = () => loadAiInsightTab();
+document.getElementById('panel-ai').__refresh = () => { loadAiInsightTab(); loadQualitativeContext(); };
 loadAiInsightTab();
+
+// ════════ "추가 정보 입력"(정성 정보) — 칩/텍스트/첨부파일을 회사×기간 단위로
+// 저장하고, AI 인사이트 재생성 시 함께 반영한다 ════════
+function getQualSelectedTags() {
+  return [...document.querySelectorAll('#panel-ai .chip.on, #panel-ai .chip-ext.on')].map(el => el.textContent.trim());
+}
+
+function setQualChipsFromTags(tags) {
+  const set = new Set(tags || []);
+  document.querySelectorAll('#panel-ai .chip, #panel-ai .chip-ext').forEach(el => {
+    el.classList.toggle('on', set.has(el.textContent.trim()));
+  });
+}
+
+document.addEventListener('click', e => {
+  const chip = e.target.closest('#panel-ai .chip, #panel-ai .chip-ext');
+  if (chip) chip.classList.toggle('on');
+});
+
+let qualPendingFile = null;
+const QUAL_ALLOWED_EXT = /\.(xlsb|xlsx|pdf|png|jpe?g|docx)$/i;
+
+document.getElementById('qualFileBtn')?.addEventListener('click', () => {
+  document.getElementById('qualFileInput')?.click();
+});
+
+document.getElementById('qualFileInput')?.addEventListener('change', e => {
+  const file = e.target.files[0];
+  const nameEl = document.getElementById('qualFileName');
+  qualPendingFile = null;
+  if (!file) { if (nameEl) nameEl.innerHTML = ''; return; }
+  if (!QUAL_ALLOWED_EXT.test(file.name)) {
+    alert('지원하지 않는 파일 형식입니다.');
+    e.target.value = '';
+    if (nameEl) nameEl.innerHTML = '';
+    return;
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    alert('파일 크기는 최대 10MB까지 가능합니다.');
+    e.target.value = '';
+    if (nameEl) nameEl.innerHTML = '';
+    return;
+  }
+  qualPendingFile = file;
+  if (nameEl) nameEl.innerHTML = `<i class="ti ti-paperclip" aria-hidden="true"></i> ${escapeHtml(file.name)}`;
+});
+
+async function loadQualitativeContext() {
+  const filters = getActiveFilters();
+  if (!filters.company) { setQualChipsFromTags([]); return; }
+  try {
+    const data = await fetchJson('/api/dashboard/qualitative-context', filters);
+    setQualChipsFromTags(data?.tags);
+    const noteEl = document.getElementById('qualNote');
+    if (noteEl) noteEl.value = data?.note || '';
+    qualPendingFile = null;
+    const fileInput = document.getElementById('qualFileInput');
+    if (fileInput) fileInput.value = '';
+    const nameEl = document.getElementById('qualFileName');
+    if (nameEl) {
+      nameEl.innerHTML = data?.attachment_file_name
+        ? `<a href="${data.attachment_file_url}" target="_blank" rel="noopener" style="color:#185FA5;text-decoration:none"><i class="ti ti-paperclip" aria-hidden="true"></i> ${escapeHtml(data.attachment_file_name)}</a>`
+        : '';
+    }
+  } catch (err) {
+    console.error('정성 정보 로드 실패', err);
+  }
+}
+
+document.getElementById('qualSubmitBtn')?.addEventListener('click', async () => {
+  const filters = getActiveFilters();
+  if (!filters.company) { alert('회사를 먼저 선택해주세요.'); return; }
+  const btn = document.getElementById('qualSubmitBtn');
+  const originalHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader-2 spin-loop" aria-hidden="true"></i> 반영 중…';
+  try {
+    const fd = new FormData();
+    fd.append('note', document.getElementById('qualNote')?.value || '');
+    fd.append('tags', JSON.stringify(getQualSelectedTags()));
+    if (qualPendingFile) fd.append('file', qualPendingFile);
+
+    const qs = new URLSearchParams();
+    qs.set('company', filters.company);
+    if (filters.month) qs.set('month', filters.month);
+
+    const res = await fetch(`${API_BASE}/api/dashboard/qualitative-context?${qs.toString()}`, { method: 'POST', body: fd });
+    if (!res.ok) throw new Error(`save failed: ${res.status}`);
+    await loadQualitativeContext();
+    await loadAiInsightTab();
+  } catch (err) {
+    console.error('정성 정보 저장 실패', err);
+    alert('정성 정보 반영에 실패했습니다.');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
+  }
+});
+
+loadQualitativeContext();
 </script>
 
 <!-- ════════════════ 캠페인 성과 탭 스크립트 ════════════════ -->
