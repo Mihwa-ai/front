@@ -204,7 +204,7 @@ body[data-tab="panel-partner"] #commonFilter{display:none}
   .arow:last-child{border-bottom:none;padding-bottom:0}
   .rh{background:#FCEBEB;color:#A32D2D;border-radius:6px;padding:3px 7px;font-size:14px;font-weight:500}
   .rm{background:#FAEEDA;color:#854F0B;border-radius:6px;padding:3px 7px;font-size:14px;font-weight:500}
-  .rt{width:100%;font-size:16px;border-collapse:collapse;table-layout:fixed}
+  .rt{width:100%;font-size:16px;border-collapse:collapse;table-layout:auto}
   .rt th{padding:7px 9px;color:var(--color-text-secondary);font-size:14px;font-weight:400;border-bottom:1px solid var(--color-border-tertiary);text-align:left}
   .rt td{padding:7px 9px;border-bottom:1px solid var(--color-border-tertiary)}
   .rt tr:last-child td{border-bottom:none}
@@ -633,12 +633,14 @@ body[data-tab="panel-partner"] #commonFilter{display:none}
         <button id="churnCsvBtn" type="button" style="font-size:14px;padding:4px 13px;border-radius:6px;border:1px solid var(--color-border-secondary);background:var(--color-background-secondary);color:var(--color-text-secondary);cursor:pointer;display:flex;align-items:center;gap:4px"><i class="ti ti-download" aria-hidden="true" style="font-size:16px"></i>CSV</button>
       </div>
       <div class="card">
+        <div style="overflow-x:auto">
         <table class="rt">
-          <thead><tr><th style="width:122px">기관명</th><th style="width:57px">지역</th><th>마지막 구매(R)</th><th>빈도 감소(F)</th><th>금액 감소(M)</th><th style="width:62px;text-align:center">점수</th><th style="width:54px;text-align:center">등급</th><th>AI 추천</th></tr></thead>
+          <thead><tr><th style="white-space:nowrap">기관명</th><th style="width:57px">지역</th><th style="white-space:nowrap">마지막 구매(R)</th><th style="white-space:nowrap">빈도 감소(F)</th><th style="white-space:nowrap">금액 감소(M)</th><th style="width:62px;text-align:center">점수</th><th style="width:54px;text-align:center">등급</th><th>AI 추천</th></tr></thead>
           <tbody id="churnRiskBody">
             <tr><td colspan="8" style="text-align:center;color:var(--color-text-secondary);padding:20px">불러오는 중…</td></tr>
           </tbody>
         </table>
+        </div>
         <div style="margin-top:7px;padding:7px 11px;background:#E6F1FB;border-radius:7px;font-size:14px;color:#185FA5;display:flex;align-items:center;gap:6px"><i class="ti ti-info-circle" aria-hidden="true" style="font-size:17px;flex-shrink:0"></i>위험 점수 = Recency 40% + Frequency 35% + Monetary 25% 가중 합산</div>
       </div>
     </div>
@@ -2450,7 +2452,7 @@ function renderChurnRiskDetail(rows) {
   tbody.innerHTML = rows.slice(0, 15).map(r => {
     const dc = r.riskGrade === 'H' ? '#A32D2D' : '#854F0B';
     const badgeClass = r.riskGrade === 'H' ? 'rh' : 'rm';
-    return `<tr><td style="font-weight:500">${escapeHtml(r.name)}</td><td class="s">${escapeHtml(r.region)}</td><td style="color:${dc}">${r.dormantDays}일전</td><td style="color:${dc}">–${r.freqDeclinePct}%</td><td style="color:${dc}">–${r.monetaryDeclinePct}%</td><td style="text-align:center;font-weight:500;color:${dc}">${r.riskScore}</td><td style="text-align:center"><span class="${badgeClass}">${escapeHtml(r.riskGrade)}</span></td><td style="font-size:14px;color:#185FA5">${escapeHtml(r.recommendation)}</td></tr>`;
+    return `<tr><td style="font-weight:500;white-space:nowrap">${escapeHtml(r.name)}</td><td class="s" style="white-space:nowrap">${escapeHtml(r.region)}</td><td style="color:${dc};white-space:nowrap">${r.dormantDays}일전</td><td style="color:${dc};white-space:nowrap">–${r.freqDeclinePct}%</td><td style="color:${dc};white-space:nowrap">–${r.monetaryDeclinePct}%</td><td style="text-align:center;font-weight:500;color:${dc}">${r.riskScore}</td><td style="text-align:center"><span class="${badgeClass}">${escapeHtml(r.riskGrade)}</span></td><td style="font-size:14px;color:#185FA5;white-space:nowrap">${escapeHtml(r.recommendation)}</td></tr>`;
   }).join('');
 }
 
