@@ -89,10 +89,9 @@ body[data-tab="panel-partner"] #commonFilter{display:none}
   body{padding:0}
 }
 #partnerReportPrint{display:none}
-@media print{
-  body.report-print-mode > .app{display:none !important}
-  body.report-print-mode #partnerReportPrint{display:block !important}
-}
+/* html2canvas로 캡처하는 동안만 화면 밖에서 고정 폭으로 렌더링 — 폭이 정해지지
+   않으면 kpi-grid 같은 내부 grid의 컬럼 폭이 0으로 붕괴해 캡처가 깨진다. */
+#partnerReportPrint.report-capturing{display:block;position:fixed;top:0;left:-10000px;width:800px;z-index:-1}
 .report-doc{font-family:var(--font-sans);color:#1a1a1a;background:#fff;padding:14mm 16mm;max-width:210mm;margin:0 auto}
 .report-doc h1{font-size:22px;color:#0C447C;margin:0 0 4px}
 .report-doc .rmeta{font-size:13px;color:#666;margin-bottom:18px;padding-bottom:12px;border-bottom:2px solid #185FA5}
@@ -870,9 +869,6 @@ window.addEventListener('beforeprint', () => {
   if(active && REDRAW[active.id]) REDRAW[active.id]();
 });
 window.addEventListener('afterprint', () => {
-  document.body.classList.remove('report-print-mode');
-  const reportEl = document.getElementById('partnerReportPrint');
-  if(reportEl) reportEl.innerHTML = '';
   const active = document.querySelector('.tabpanel.active');
   if(active && REDRAW[active.id]) REDRAW[active.id]();
 });
@@ -1834,6 +1830,14 @@ document.getElementById('panel-buyers').__refresh = () => {
   async function ensurePptLibs(){
     if(!window.PptxGenJS) await loadScript('https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js');
   }
+  // window.print()는 Korean 텍스트 렌더링은 완벽하지만 결과물을 파일로 저장할 수
+  // 없어 파트너 히스토리에서 재다운로드가 불가능했다 — html2canvas로 리포트
+  // DOM(#partnerReportPrint, 차트/그리드 없는 단순 문서형 레이아웃)을 이미지로
+  // 캡처해 jsPDF에 얹으면 텍스트는 그대로 보존하면서 실제 파일 Blob을 만들 수 있다.
+  async function ensurePdfLibs(){
+    if(!window.html2canvas) await loadScript('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js');
+    if(!window.jspdf) await loadScript('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js');
+  }
   function downloadBlob(blob, filename){
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -2154,8 +2158,10 @@ document.getElementById('panel-buyers').__refresh = () => {
 
   // PDF는 화면을 그대로 캡처하는 대신, 파트너사와 공유해서 판매 현황을 점검하고
   // 향후 전략·프로모션 방향을 논의하는 용도에 맞게 핵심 수치만 뽑아 별도 리포트
-  // 레이아웃으로 새로 구성한다. html2canvas 대신 브라우저 기본 인쇄를 그대로
-  // 쓰되(레이아웃 안정성 때문), 인쇄 대상을 이 리포트 전용 DOM으로 한정한다.
+  // 레이아웃으로 새로 구성한다. 이 리포트 전용 DOM(#partnerReportPrint)은 차트나
+  // 복잡한 그리드가 없는 단순 문서형 레이아웃이라 html2canvas로 안정적으로
+  // 캡처할 수 있다 — window.print()와 달리 실제 파일 Blob이 남아 파트너
+  // 히스토리에서 다시 다운로드할 수 있다.
   async function buildPartnerReportPdf(){
     const filters = getActiveFilters();
     if(!filters.company){ alert('회사를 먼저 선택해주세요.'); return; }
@@ -2241,13 +2247,35 @@ document.getElementById('panel-buyers').__refresh = () => {
         </div>
       `;
 
-      document.body.classList.add('report-print-mode');
-      setExportLoading(false);
-      window.print();
-      storeReportDownload(null, null, 'PDF', tabName());
+      await ensurePdfLibs();
+      reportEl.classList.add('report-capturing');
+      const canvas = await html2canvas(reportEl, { scale:2, backgroundColor:'#ffffff', windowWidth:reportEl.scrollWidth, useCORS:true });
+      reportEl.classList.remove('report-capturing');
+      reportEl.innerHTML = '';
+
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ unit:'pt', format:'a4' });
+      const pageW = pdf.internal.pageSize.getWidth(), pageH = pdf.internal.pageSize.getHeight();
+      const imgW = pageW, imgH = canvas.height * imgW / canvas.width;
+      const imgData = canvas.toDataURL('image/png');
+      let heightLeft = imgH, position = 0;
+      pdf.addImage(imgData, 'PNG', 0, position, imgW, imgH);
+      heightLeft -= pageH;
+      while(heightLeft > 0){
+        position -= pageH;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgW, imgH);
+        heightLeft -= pageH;
+      }
+
+      const fileName = `블루팜코리아_${filters.company}_판매현황리포트_${stamp()}.pdf`;
+      const blob = pdf.output('blob');
+      downloadBlob(blob, fileName);
+      await storeReportDownload(blob, fileName, 'PDF', tabName());
     }catch(err){
       console.error(err);
       alert('리포트 생성에 실패했습니다.');
+      reportEl.classList.remove('report-capturing');
       reportEl.innerHTML = '';
     }finally{
       setExportLoading(false);
